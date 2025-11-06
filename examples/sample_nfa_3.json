@@ -1,0 +1,16 @@
+{
+  "states": ["even", "odd"],
+  "alphabet": ["a", "b"],
+  "start_state": "even",
+  "final_states": ["even"],
+  "transitions": {
+    "even": {
+      "a": ["odd"],
+      "b": ["even"]
+    },
+    "odd": {
+      "a": ["even"],
+      "b": ["odd"]
+    }
+  }
+}
