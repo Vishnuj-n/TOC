@@ -15,6 +15,14 @@ import streamlit as st
 from nfa_to_dfa import convert_nfa_to_dfa, validate_nfa
 from gemini_importer import image_to_nfa_json
 
+# Try to import graph visualization (optional)
+try:
+    from graph_visualizer import get_graph_svg, compare_graphs
+    GRAPH_AVAILABLE = True
+except ImportError:
+    GRAPH_AVAILABLE = False
+    st.warning("⚠️ Graph visualization not available. Install 'graphviz' package and Graphviz software for visual diagrams.")
+
 
 # Page configuration
 st.set_page_config(
@@ -172,23 +180,39 @@ def main():
         st.error(f"❌ Invalid NFA: {error_msg}")
         st.stop()
     
-    # Display NFA
-    col1, col2 = st.columns([1, 1])
+    # Display NFA with Graph
+    st.subheader("NFA Visualization")
     
-    with col1:
-        st.subheader("NFA Specification")
+    # Create tabs for different views
+    if GRAPH_AVAILABLE:
+        tab1, tab2, tab3 = st.tabs(["📊 Graph", "📋 JSON", "📈 Summary"])
+        
+        with tab1:
+            try:
+                # Generate and display NFA graph
+                svg_graph = get_graph_svg(nfa_data, "Input NFA")
+                st.image(svg_graph, use_container_width=True)
+            except Exception as e:
+                st.error(f"Failed to generate graph: {e}")
+                st.info("💡 Make sure Graphviz is installed on your system: https://graphviz.org/download/")
+    else:
+        tab2, tab3 = st.tabs(["📋 JSON", "📈 Summary"])
+    
+    with tab2:
         st.json(nfa_data)
     
-    with col2:
-        st.subheader("NFA Summary")
-        st.metric("States", len(nfa_data["states"]))
-        st.metric("Alphabet Size", len(nfa_data["alphabet"]))
-        st.metric("Final States", len(nfa_data["final_states"]))
+    with tab3:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("States", len(nfa_data["states"]))
+            st.metric("Alphabet Size", len(nfa_data["alphabet"]))
+            st.metric("Final States", len(nfa_data["final_states"]))
         
-        st.markdown("**States:** " + ", ".join(nfa_data["states"]))
-        st.markdown("**Alphabet:** " + ", ".join(f"`{s}`" for s in nfa_data["alphabet"]))
-        st.markdown("**Start State:** " + f"`{nfa_data['start_state']}`")
-        st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in nfa_data["final_states"]))
+        with col2:
+            st.markdown("**States:** " + ", ".join(nfa_data["states"]))
+            st.markdown("**Alphabet:** " + ", ".join(f"`{s}`" for s in nfa_data["alphabet"]))
+            st.markdown("**Start State:** " + f"`{nfa_data['start_state']}`")
+            st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in nfa_data["final_states"]))
     
     st.markdown("---")
     
@@ -225,10 +249,31 @@ def main():
         # DFA output
         st.header("🎯 DFA Output")
         
-        col1, col2 = st.columns([1, 1])
+        # Create tabs for DFA views
+        if GRAPH_AVAILABLE:
+            dfa_tab1, dfa_tab2, dfa_tab3, dfa_tab4 = st.tabs(["📊 Graph", "🔄 Comparison", "📋 JSON", "📈 Summary"])
+            
+            with dfa_tab1:
+                try:
+                    # Generate and display DFA graph
+                    dfa_svg_graph = get_graph_svg(st.session_state.dfa, "Output DFA")
+                    st.image(dfa_svg_graph, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed to generate graph: {e}")
+            
+            with dfa_tab2:
+                try:
+                    # Generate comparison graph
+                    st.subheader("Side-by-Side Comparison")
+                    comparison_graph = compare_graphs(nfa_data, st.session_state.dfa)
+                    comparison_svg = comparison_graph.pipe(format='svg').decode('utf-8')
+                    st.image(comparison_svg, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed to generate comparison: {e}")
+        else:
+            dfa_tab3, dfa_tab4 = st.tabs(["📋 JSON", "📈 Summary"])
         
-        with col1:
-            st.subheader("DFA Specification")
+        with dfa_tab3:
             dfa_json = json.dumps(st.session_state.dfa, indent=2)
             st.code(dfa_json, language="json")
             
@@ -241,22 +286,41 @@ def main():
                 use_container_width=True
             )
         
-        with col2:
-            st.subheader("DFA Summary")
-            st.metric("States", len(st.session_state.dfa["states"]))
-            st.metric("Alphabet Size", len(st.session_state.dfa["alphabet"]))
-            st.metric("Final States", len(st.session_state.dfa["final_states"]))
+        with dfa_tab4:
+            col1, col2 = st.columns(2)
             
-            st.markdown("**States:** " + ", ".join(st.session_state.dfa["states"]))
-            st.markdown("**Start State:** " + f"`{st.session_state.dfa['start_state']}`")
-            st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in st.session_state.dfa["final_states"]))
+            with col1:
+                st.metric("States", len(st.session_state.dfa["states"]))
+                st.metric("Alphabet Size", len(st.session_state.dfa["alphabet"]))
+                st.metric("Final States", len(st.session_state.dfa["final_states"]))
+            
+            with col2:
+                st.markdown("**States:** " + ", ".join(st.session_state.dfa["states"]))
+                st.markdown("**Start State:** " + f"`{st.session_state.dfa['start_state']}`")
+                st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in st.session_state.dfa["final_states"]))
             
             # State explosion warning
             nfa_state_count = len(nfa_data["states"])
             dfa_state_count = len(st.session_state.dfa["states"])
             
+            st.markdown("---")
+            st.subheader("Comparison Metrics")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("NFA States", nfa_state_count)
+            with col2:
+                st.metric("DFA States", dfa_state_count)
+            with col3:
+                ratio = dfa_state_count / nfa_state_count if nfa_state_count > 0 else 0
+                st.metric("Ratio (DFA/NFA)", f"{ratio:.2f}x")
+            
             if dfa_state_count > nfa_state_count * 2:
                 st.warning(f"⚠️ State explosion detected! DFA has {dfa_state_count} states vs {nfa_state_count} in NFA")
+            elif dfa_state_count < nfa_state_count:
+                st.success(f"✅ DFA is more compact! {dfa_state_count} states vs {nfa_state_count} in NFA")
+            else:
+                st.info(f"ℹ️ Similar complexity: {dfa_state_count} DFA states vs {nfa_state_count} NFA states")
     
     # Footer
     st.markdown("---")
