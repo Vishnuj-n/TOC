@@ -64,7 +64,7 @@ def main():
     
     input_mode = st.sidebar.radio(
         "Input Method:",
-        ["Paste JSON", "Upload JSON", "Upload Image", "Camera"],
+        ["Paste JSON", "Upload JSON", "Upload Image"],
         help="Select how you want to input your NFA"
     )
     
@@ -115,26 +115,19 @@ def main():
             if st.sidebar.button("🔍 Extract NFA from Image", type="primary"):
                 with st.spinner("🤖 Analyzing image with Gemini AI..."):
                     try:
-                        nfa_data = image_to_nfa_json(img_bytes)
+                        extracted_nfa = image_to_nfa_json(img_bytes)
+                        st.session_state.extracted_nfa = extracted_nfa
                         st.sidebar.success("✅ NFA extracted successfully!")
                     except Exception as e:
                         st.sidebar.error(f"❌ Image import failed: {e}")
-    
-    elif input_mode == "Camera":
-        st.sidebar.markdown("Take a photo of your NFA diagram:")
-        cam = st.sidebar.camera_input("Capture NFA Diagram")
-        
-        if cam is not None:
-            img_bytes = cam.read()
             
-            # Process button
-            if st.sidebar.button("🔍 Extract NFA from Photo", type="primary"):
-                with st.spinner("🤖 Analyzing photo with Gemini AI..."):
-                    try:
-                        nfa_data = image_to_nfa_json(img_bytes)
-                        st.sidebar.success("✅ NFA extracted successfully!")
-                    except Exception as e:
-                        st.sidebar.error(f"❌ Image import failed: {e}")
+            # Use the extracted NFA from session state
+            if "extracted_nfa" in st.session_state:
+                nfa_data = st.session_state.extracted_nfa
+                # Add a clear button
+                if st.sidebar.button("🗑️ Clear Extracted NFA"):
+                    del st.session_state.extracted_nfa
+                    st.rerun()
     
     # Main content area
     st.header("📋 NFA Input Preview")
