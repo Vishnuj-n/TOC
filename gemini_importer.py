@@ -100,7 +100,7 @@ def image_to_nfa_json(img_bytes: bytes) -> Dict:
         
         # Use Gemini 1.5 Flash model (faster and cost-effective)
         # Alternative: 'gemini-1.5-pro' for potentially better accuracy
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Send both the prompt and the image
         response = model.generate_content([JSON_GENERATION_PROMPT, img])
