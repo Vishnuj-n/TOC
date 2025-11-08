@@ -13,7 +13,6 @@ from typing import Optional
 import streamlit as st
 
 from nfa_to_dfa import convert_nfa_to_dfa, validate_nfa
-from gemini_importer import image_to_nfa_json
 
 # Try to import graph visualization (optional)
 try:
@@ -64,7 +63,7 @@ def main():
     
     input_mode = st.sidebar.radio(
         "Input Method:",
-        ["Paste JSON", "Upload JSON", "Upload Image"],
+        ["Paste JSON", "Upload JSON"],
         help="Select how you want to input your NFA"
     )
     
@@ -96,38 +95,6 @@ def main():
                 nfa_data = json.load(uploaded)
             except Exception as e:
                 st.sidebar.error(f"❌ Failed to read JSON: {e}")
-    
-    elif input_mode == "Upload Image":
-        st.sidebar.markdown("Upload a photo of your NFA diagram:")
-        img = st.sidebar.file_uploader(
-            "NFA Diagram Image",
-            type=["png", "jpg", "jpeg", "bmp"],
-            help="Upload an image of a hand-drawn or computer-generated NFA diagram"
-        )
-        
-        if img is not None:
-            # Display the uploaded image
-            st.sidebar.image(img, caption="Uploaded Image", use_container_width=True)
-            
-            img_bytes = img.read()
-            
-            # Process button
-            if st.sidebar.button("🔍 Extract NFA from Image", type="primary"):
-                with st.spinner("🤖 Analyzing image with Gemini AI..."):
-                    try:
-                        extracted_nfa = image_to_nfa_json(img_bytes)
-                        st.session_state.extracted_nfa = extracted_nfa
-                        st.sidebar.success("✅ NFA extracted successfully!")
-                    except Exception as e:
-                        st.sidebar.error(f"❌ Image import failed: {e}")
-            
-            # Use the extracted NFA from session state
-            if "extracted_nfa" in st.session_state:
-                nfa_data = st.session_state.extracted_nfa
-                # Add a clear button
-                if st.sidebar.button("🗑️ Clear Extracted NFA"):
-                    del st.session_state.extracted_nfa
-                    st.rerun()
     
     # Main content area
     st.header("📋 NFA Input Preview")
