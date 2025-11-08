@@ -1,5 +1,3 @@
-	streamlit
-	pillow
-	google-generativeai
-	pytest
-	graphviz
+streamlit
+pytest
+graphviz

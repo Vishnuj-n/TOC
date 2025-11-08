@@ -1,27 +1,12 @@
-"""Streamlit-based UI for NFA to DFA conversion.
+"""NFA to DFA Visualizer - Landing Page
 
 This is the main entry point for the Automaton Visualizer web application.
-It provides multiple input methods and displays the conversion process.
+Navigate to different pages to build, import, and convert NFAs to DFAs.
 
 Run with: streamlit run main.py
 """
 
-import json
-import io
-from typing import Optional
-
 import streamlit as st
-
-from nfa_to_dfa import convert_nfa_to_dfa, validate_nfa
-
-# Try to import graph visualization (optional)
-try:
-    from graph_visualizer import get_graph_svg, compare_graphs
-    GRAPH_AVAILABLE = True
-except ImportError:
-    GRAPH_AVAILABLE = False
-    st.warning("⚠️ Graph visualization not available. Install 'graphviz' package and Graphviz software for visual diagrams.")
-
 
 # Page configuration
 st.set_page_config(
@@ -32,264 +17,211 @@ st.set_page_config(
 )
 
 
-def load_json_from_text(text: str) -> Optional[dict]:
-    """Parse JSON text into a dictionary.
-    
-    Args:
-        text: JSON string
-    
-    Returns:
-        Parsed dictionary or None if invalid
-    """
-    try:
-        return json.loads(text)
-    except Exception:
-        return None
-
-
 def main():
-    """Main application entry point."""
+    """Main landing page."""
     
-    # Title and description
+    # Hero Section
     st.title("🔄 NFA → DFA Visualizer")
     st.markdown("""
-    Convert a **Non-deterministic Finite Automaton (NFA)** to a 
-    **Deterministic Finite Automaton (DFA)** using the subset construction algorithm.
-    """)
+    <div style='background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); 
+                padding: 2rem; border-radius: 10px; color: white; margin-bottom: 2rem;'>
+        <h2 style='margin: 0; color: white;'>Transform Non-deterministic Finite Automata into Deterministic Finite Automata</h2>
+        <p style='margin: 0.5rem 0 0 0; font-size: 1.1rem;'>
+            Using the powerful <strong>Subset Construction Algorithm</strong>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Sidebar for input
-    st.sidebar.header("📥 Input")
-    st.sidebar.markdown("Choose how to provide your NFA:")
+    # Quick Start Guide
+    st.header("🚀 Quick Start")
     
-    input_mode = st.sidebar.radio(
-        "Input Method:",
-        ["Paste JSON", "Upload JSON"],
-        help="Select how you want to input your NFA"
-    )
+    col1, col2, col3 = st.columns(3)
     
-    nfa_data = None
-    
-    # Handle different input modes
-    if input_mode == "Paste JSON":
-        st.sidebar.markdown("Paste your NFA JSON below:")
-        text = st.sidebar.text_area(
-            "NFA JSON",
-            height=300,
-            placeholder='{\n  "states": ["q0", "q1"],\n  "alphabet": ["a", "b"],\n  ...\n}'
-        )
+    with col1:
+        st.markdown("""
+        ### 📝 Manual Builder
+        **Best for learning & experimenting**
         
-        if text:
-            nfa_data = load_json_from_text(text)
-            if nfa_data is None:
-                st.sidebar.error("❌ Invalid JSON format")
+        Build your NFA step-by-step using an intuitive form:
+        - Add states and alphabet symbols
+        - Define transitions interactively
+        - Validate as you build
+        - Visual preview
+        """)
+        if st.button("📝 Start Manual Builder →", use_container_width=True, type="primary"):
+            st.switch_page("pages/1_📝_Manual_Builder.py")
     
-    elif input_mode == "Upload JSON":
-        uploaded = st.sidebar.file_uploader(
-            "Upload NFA JSON file",
-            type=["json"],
-            help="Select a .json file containing your NFA specification"
-        )
+    with col2:
+        st.markdown("""
+        ### 📤 Import JSON
+        **Best for existing NFAs**
         
-        if uploaded is not None:
-            try:
-                nfa_data = json.load(uploaded)
-            except Exception as e:
-                st.sidebar.error(f"❌ Failed to read JSON: {e}")
+        Upload or paste your NFA in JSON format:
+        - Upload .json file
+        - Paste JSON directly
+        - Auto-validation
+        - Quick import
+        """)
+        if st.button("📤 Import JSON →", use_container_width=True):
+            st.switch_page("pages/2_📤_Import_JSON.py")
     
-    # Main content area
-    st.header("📋 NFA Input Preview")
-    
-    if nfa_data is None:
-        st.info("👈 No NFA loaded yet. Choose an input method from the sidebar.")
+    with col3:
+        st.markdown("""
+        ### 🔄 Convert & Visualize
+        **View conversion results**
         
-        # Show example
-        with st.expander("📖 Example NFA JSON Format"):
-            example_nfa = {
-                "states": ["q0", "q1", "q2"],
-                "alphabet": ["a", "b"],
-                "start_state": "q0",
-                "final_states": ["q2"],
-                "transitions": {
-                    "q0": {
-                        "a": ["q0", "q1"],
-                        "b": ["q0"]
-                    },
-                    "q1": {
-                        "b": ["q2"]
-                    },
-                    "q2": {
-                        "a": ["q2"],
-                        "b": ["q2"]
-                    }
-                }
-            }
-            st.json(example_nfa)
-            st.markdown("""
-            **This NFA accepts strings that:**
-            - Contain at least one 'a' followed by at least one 'b'
-            - Example accepted: "aaab", "aabbb", "baaab"
-            - Example rejected: "aaa", "bbb", "ab" (need more symbols)
-            """)
-        
-        st.stop()
-    
-    # Validate NFA
-    is_valid, error_msg = validate_nfa(nfa_data)
-    
-    if not is_valid:
-        st.error(f"❌ Invalid NFA: {error_msg}")
-        st.stop()
-    
-    # Display NFA with Graph
-    st.subheader("NFA Visualization")
-    
-    # Create tabs for different views
-    if GRAPH_AVAILABLE:
-        tab1, tab2, tab3 = st.tabs(["📊 Graph", "📋 JSON", "📈 Summary"])
-        
-        with tab1:
-            try:
-                # Generate and display NFA graph
-                svg_graph = get_graph_svg(nfa_data, "Input NFA")
-                st.image(svg_graph, use_container_width=True)
-            except Exception as e:
-                st.error(f"Failed to generate graph: {e}")
-                st.info("💡 Make sure Graphviz is installed on your system: https://graphviz.org/download/")
-    else:
-        tab2, tab3 = st.tabs(["📋 JSON", "📈 Summary"])
-    
-    with tab2:
-        st.json(nfa_data)
-    
-    with tab3:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("States", len(nfa_data["states"]))
-            st.metric("Alphabet Size", len(nfa_data["alphabet"]))
-            st.metric("Final States", len(nfa_data["final_states"]))
-        
-        with col2:
-            st.markdown("**States:** " + ", ".join(nfa_data["states"]))
-            st.markdown("**Alphabet:** " + ", ".join(f"`{s}`" for s in nfa_data["alphabet"]))
-            st.markdown("**Start State:** " + f"`{nfa_data['start_state']}`")
-            st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in nfa_data["final_states"]))
+        See your NFA transformed to DFA:
+        - Interactive graphs
+        - Step-by-step algorithm trace
+        - Side-by-side comparison
+        - Download results
+        """)
+        if st.button("🔄 Convert & Visualize →", use_container_width=True):
+            st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
     
     st.markdown("---")
     
-    # Convert button
-    if st.button("🚀 Convert to DFA", type="primary", use_container_width=True):
-        try:
-            with st.spinner("⚙️ Running subset construction algorithm..."):
-                dfa, logs = convert_nfa_to_dfa(nfa_data)
-            
-            # Store in session state
-            st.session_state.dfa = dfa
-            st.session_state.logs = logs
-            st.session_state.converted = True
-            
-        except Exception as e:
-            st.error(f"❌ Conversion failed: {e}")
-            import traceback
-            with st.expander("🐛 Error Details"):
-                st.code(traceback.format_exc())
+    # Features Section
+    st.header("✨ Features")
     
-    # Display results if conversion has been done
-    if "converted" in st.session_state and st.session_state.converted:
-        st.success("✅ Conversion completed successfully!")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        #### 🎯 Core Features
+        - ✅ **Subset Construction Algorithm** - Industry-standard conversion
+        - ✅ **Multiple Input Methods** - Manual builder, JSON upload, paste
+        - ✅ **Visual Graphs** - Beautiful automata visualizations
+        - ✅ **Detailed Logging** - Step-by-step algorithm trace
+        - ✅ **Validation** - Automatic NFA validation
+        """)
+    
+    with col2:
+        st.markdown("""
+        #### 🛠️ Additional Features
+        - ✅ **Side-by-Side Comparison** - Compare NFA and DFA
+        - ✅ **Export Results** - Download DFA as JSON
+        - ✅ **State Metrics** - Analyze state complexity
+        - ✅ **Interactive UI** - Clean, modern interface
+        - ✅ **Examples Included** - Learn from sample NFAs
+        """)
+    
+    st.markdown("---")
+    
+    # Example Section
+    st.header("📖 Example NFA")
+    
+    st.markdown("""
+    Here's a simple NFA that accepts strings containing at least one 'a' followed by at least one 'b':
+    """)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        example_nfa = {
+            "states": ["q0", "q1", "q2"],
+            "alphabet": ["a", "b"],
+            "start_state": "q0",
+            "final_states": ["q2"],
+            "transitions": {
+                "q0": {
+                    "a": ["q0", "q1"],
+                    "b": ["q0"]
+                },
+                "q1": {
+                    "b": ["q2"]
+                },
+                "q2": {
+                    "a": ["q2"],
+                    "b": ["q2"]
+                }
+            }
+        }
+        st.json(example_nfa)
+    
+    with col2:
+        st.markdown("""
+        **Language Description:**
+        - Accepts: Strings with ≥1 'a' followed by ≥1 'b'
+        - Examples: `"aab"`, `"aaabbb"`, `"baaab"`
+        - Rejects: `"aaa"`, `"bbb"`, `"ab"` (need more symbols)
         
-        # Conversion log
-        st.header("📝 Conversion Log")
-        st.markdown("Step-by-step trace of the subset construction algorithm:")
+        **Characteristics:**
+        - 3 states
+        - Non-deterministic (state q0 has multiple 'a' transitions)
+        - Multiple paths possible
         
-        log_text = "\n".join(st.session_state.logs)
-        st.text_area("Algorithm Trace", log_text, height=400)
+        **Try it yourself:**
+        Copy this JSON and paste it in the Import JSON page!
+        """)
+    
+    st.markdown("---")
+    
+    # Algorithm Overview
+    st.header("🧮 Subset Construction Algorithm")
+    
+    with st.expander("📚 How It Works", expanded=False):
+        st.markdown("""
+        The **Subset Construction Algorithm** converts any NFA to an equivalent DFA:
+        
+        1. **Initialize**: Start with the NFA's initial state as a DFA state
+        2. **Process Queue**: For each DFA state (which represents a set of NFA states):
+           - For each input symbol in the alphabet:
+             - Compute all possible NFA states reachable via that symbol
+             - Create a new DFA state representing this set (if not already exists)
+             - Add the transition to the DFA
+        3. **Mark Final States**: Any DFA state containing an NFA final state becomes a final state
+        4. **Complete**: Continue until all DFA states are processed
+        
+        **Time Complexity**: O(2^n) in worst case, where n is the number of NFA states
+        
+        **Result**: A DFA that accepts the exact same language as the original NFA
+        """)
+    
+    st.markdown("---")
+    
+    # Footer
+    st.markdown("""
+    <div style='text-align: center; color: #666; padding: 2rem 0;'>
+        <p style='margin: 0;'><strong>NFA → DFA Visualizer v3.0</strong></p>
+        <p style='margin: 0.5rem 0;'>Built with Streamlit • Powered by Subset Construction Algorithm</p>
+        <p style='margin: 0;'>💡 Tip: NFAs can have multiple transitions per input, DFAs have exactly one</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar
+    with st.sidebar:
+        st.header("📋 Navigation")
+        st.markdown("""
+        Use the pages above or click these links:
+        """)
+        
+        if st.button("📝 Manual Builder", use_container_width=True):
+            st.switch_page("pages/1_📝_Manual_Builder.py")
+        if st.button("📤 Import JSON", use_container_width=True):
+            st.switch_page("pages/2_📤_Import_JSON.py")
+        if st.button("🔄 Convert & Visualize", use_container_width=True):
+            st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+        if st.button("ℹ️ About & Help", use_container_width=True):
+            st.switch_page("pages/4_ℹ️_About.py")
         
         st.markdown("---")
         
-        # DFA output
-        st.header("🎯 DFA Output")
-        
-        # Create tabs for DFA views
-        if GRAPH_AVAILABLE:
-            dfa_tab1, dfa_tab2, dfa_tab3, dfa_tab4 = st.tabs(["📊 Graph", "🔄 Comparison", "📋 JSON", "📈 Summary"])
-            
-            with dfa_tab1:
-                try:
-                    # Generate and display DFA graph
-                    dfa_svg_graph = get_graph_svg(st.session_state.dfa, "Output DFA")
-                    st.image(dfa_svg_graph, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Failed to generate graph: {e}")
-            
-            with dfa_tab2:
-                try:
-                    # Generate comparison graph
-                    st.subheader("Side-by-Side Comparison")
-                    comparison_graph = compare_graphs(nfa_data, st.session_state.dfa)
-                    comparison_svg = comparison_graph.pipe(format='svg').decode('utf-8')
-                    st.image(comparison_svg, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Failed to generate comparison: {e}")
+        # Session State Info
+        if 'nfa_data' in st.session_state:
+            st.success("✅ NFA Loaded")
+            nfa = st.session_state['nfa_data']
+            st.metric("States", len(nfa.get('states', [])))
+            st.metric("Alphabet Size", len(nfa.get('alphabet', [])))
+            if st.button("🗑️ Clear NFA", use_container_width=True):
+                del st.session_state['nfa_data']
+                if 'dfa_data' in st.session_state:
+                    del st.session_state['dfa_data']
+                if 'conversion_logs' in st.session_state:
+                    del st.session_state['conversion_logs']
+                st.rerun()
         else:
-            dfa_tab3, dfa_tab4 = st.tabs(["📋 JSON", "📈 Summary"])
-        
-        with dfa_tab3:
-            dfa_json = json.dumps(st.session_state.dfa, indent=2)
-            st.code(dfa_json, language="json")
-            
-            # Download button
-            st.download_button(
-                label="💾 Download DFA JSON",
-                data=dfa_json,
-                file_name="dfa.json",
-                mime="application/json",
-                use_container_width=True
-            )
-        
-        with dfa_tab4:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.metric("States", len(st.session_state.dfa["states"]))
-                st.metric("Alphabet Size", len(st.session_state.dfa["alphabet"]))
-                st.metric("Final States", len(st.session_state.dfa["final_states"]))
-            
-            with col2:
-                st.markdown("**States:** " + ", ".join(st.session_state.dfa["states"]))
-                st.markdown("**Start State:** " + f"`{st.session_state.dfa['start_state']}`")
-                st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in st.session_state.dfa["final_states"]))
-            
-            # State explosion warning
-            nfa_state_count = len(nfa_data["states"])
-            dfa_state_count = len(st.session_state.dfa["states"])
-            
-            st.markdown("---")
-            st.subheader("Comparison Metrics")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("NFA States", nfa_state_count)
-            with col2:
-                st.metric("DFA States", dfa_state_count)
-            with col3:
-                ratio = dfa_state_count / nfa_state_count if nfa_state_count > 0 else 0
-                st.metric("Ratio (DFA/NFA)", f"{ratio:.2f}x")
-            
-            if dfa_state_count > nfa_state_count * 2:
-                st.warning(f"⚠️ State explosion detected! DFA has {dfa_state_count} states vs {nfa_state_count} in NFA")
-            elif dfa_state_count < nfa_state_count:
-                st.success(f"✅ DFA is more compact! {dfa_state_count} states vs {nfa_state_count} in NFA")
-            else:
-                st.info(f"ℹ️ Similar complexity: {dfa_state_count} DFA states vs {nfa_state_count} NFA states")
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: #666;'>
-        <p>Built with Streamlit • Powered by Subset Construction Algorithm</p>
-        <p>💡 Tip: NFAs can have multiple transitions per input, DFAs have exactly one</p>
-    </div>
-    """, unsafe_allow_html=True)
+            st.info("ℹ️ No NFA loaded yet")
 
 
 if __name__ == "__main__":
