@@ -13,6 +13,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Constants
+MAX_JSON_FILE_SIZE = 1_000_000  # 1 MB limit for JSON uploads
+MAX_JSON_TEXT_LENGTH = 50_000   # 50k characters for pasted JSON
+
 
 def load_json_from_text(text: str):
     """Parse JSON text into a dictionary."""
@@ -46,18 +50,33 @@ def main():
         uploaded_file = st.file_uploader(
             "Choose a JSON file",
             type=["json"],
-            help="Select a .json file containing your NFA specification"
+            help="Select a .json file containing your NFA specification (max 1 MB)"
         )
         
         if uploaded_file is not None:
-            try:
-                nfa_data = json.load(uploaded_file)
-                source = f"File: {uploaded_file.name}"
-                st.success(f"✅ File loaded: {uploaded_file.name}")
-            except json.JSONDecodeError as e:
-                st.error(f"❌ Invalid JSON file: {e}")
-            except Exception as e:
-                st.error(f"❌ Failed to read file: {e}")
+            # Check file size
+            file_content = uploaded_file.getvalue()
+            file_size = len(file_content)
+            
+            if file_size > MAX_JSON_FILE_SIZE:
+                st.error(f"""
+                ❌ **File too large!**
+                
+                - Your file: {file_size / 1024:.1f} KB
+                - Maximum allowed: {MAX_JSON_FILE_SIZE / 1024:.0f} KB
+                
+                Please reduce the file size or simplify your NFA.
+                """)
+            else:
+                try:
+                    nfa_data = json.loads(file_content)
+                    source = f"File: {uploaded_file.name}"
+                    st.success(f"✅ File loaded: {uploaded_file.name} ({file_size / 1024:.1f} KB)")
+                except json.JSONDecodeError as e:
+                    st.error(f"❌ Invalid JSON file: {e}")
+                    st.info("💡 Please ensure your file contains valid JSON syntax.")
+                except Exception as e:
+                    st.error(f"❌ Failed to read file: {e}")
     
     # Tab 2: Paste JSON
     with tab2:
@@ -66,6 +85,7 @@ def main():
         json_text = st.text_area(
             "Paste your NFA JSON here",
             height=400,
+            max_chars=MAX_JSON_TEXT_LENGTH,
             placeholder='''{
   "states": ["q0", "q1", "q2"],
   "alphabet": ["a", "b"],
@@ -85,18 +105,28 @@ def main():
     }
   }
 }''',
-            help="Paste your NFA in JSON format"
+            help=f"Paste your NFA in JSON format (max {MAX_JSON_TEXT_LENGTH:,} characters)"
         )
         
         if json_text.strip():
-            result = load_json_from_text(json_text)
-            if isinstance(result, tuple):
-                nfa_data, error_msg = result
-                st.error(f"❌ {error_msg}")
+            if len(json_text) > MAX_JSON_TEXT_LENGTH:
+                st.error(f"""
+                ❌ **Text too long!**
+                
+                - Your text: {len(json_text):,} characters
+                - Maximum allowed: {MAX_JSON_TEXT_LENGTH:,} characters
+                
+                Please simplify your NFA.
+                """)
             else:
-                nfa_data = result
-                source = "Pasted JSON"
-                st.success("✅ JSON parsed successfully")
+                result = load_json_from_text(json_text)
+                if isinstance(result, tuple):
+                    nfa_data, error_msg = result
+                    st.error(f"❌ {error_msg}")
+                else:
+                    nfa_data = result
+                    source = "Pasted JSON"
+                    st.success(f"✅ JSON parsed successfully ({len(json_text):,} characters)")
     
     # Tab 3: Load Example
     with tab3:

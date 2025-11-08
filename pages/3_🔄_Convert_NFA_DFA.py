@@ -50,7 +50,26 @@ def main():
         
         st.stop()
     
+    # Validate session state NFA data
     nfa_data = st.session_state['nfa_data']
+    is_valid, validation_msg = validate_nfa(nfa_data)
+    
+    if not is_valid:
+        st.error(f"""
+        ❌ **Session state corrupted!**
+        
+        The NFA in session state is invalid: {validation_msg}
+        
+        Please reload your NFA.
+        """)
+        if st.button("🗑️ Clear Invalid Data", type="primary"):
+            del st.session_state['nfa_data']
+            if 'dfa_data' in st.session_state:
+                del st.session_state['dfa_data']
+            if 'conversion_logs' in st.session_state:
+                del st.session_state['conversion_logs']
+            st.rerun()
+        st.stop()
     
     # Display NFA Information
     st.header("📥 Input NFA")
@@ -64,8 +83,33 @@ def main():
                 svg_graph = get_graph_svg(nfa_data, "Input NFA")
                 st.image(svg_graph, use_container_width=True)
             except Exception as e:
-                st.error(f"Failed to generate graph: {e}")
-                st.info("💡 Make sure Graphviz is installed on your system: https://graphviz.org/download/")
+                # Check error type and provide specific messaging
+                error_msg = str(e).lower()
+                if 'executable' in error_msg or 'command' in error_msg or 'dot' in error_msg:
+                    st.error("""
+                    ❌ **Graphviz executable not found!**
+                    
+                    Graph visualization requires Graphviz to be installed on your system.
+                    
+                    **To enable graphs:**
+                    1. Download Graphviz from: https://graphviz.org/download/
+                    2. Install it on your system
+                    3. Add Graphviz to your system PATH
+                    4. Restart Streamlit
+                    
+                    💡 You can still use the app without graphs - JSON and conversion logs work fine!
+                    """)
+                else:
+                    st.error(f"""
+                    ❌ **Failed to generate graph**
+                    
+                    Error type: {type(e).__name__}
+                    Error message: {e}
+                    
+                    💡 This may be a Graphviz configuration issue. Please check:
+                    - Graphviz is installed correctly
+                    - Graphviz bin directory is in your system PATH
+                    """)
     else:
         st.warning("⚠️ Graph visualization not available. Install 'graphviz' package and Graphviz software for visual diagrams.")
         tab2, tab3 = st.tabs(["📋 JSON", "📈 Summary"])
@@ -108,8 +152,35 @@ def main():
                 st.success("✅ Conversion completed successfully!")
                 st.balloons()
                 
+            except ValueError as e:
+                st.error(f"""
+                ❌ **Conversion failed - Invalid NFA**
+                
+                {str(e)}
+                
+                Please check your NFA specification and try again.
+                """)
+            except MemoryError:
+                st.error("""
+                ❌ **Conversion failed - Out of memory!**
+                
+                Your NFA caused an exponential state explosion that exceeded available memory.
+                
+                **Suggestions:**
+                - Reduce the number of NFA states
+                - Reduce non-determinism in your NFA
+                - Simplify your NFA design
+                """)
             except Exception as e:
-                st.error(f"❌ Conversion failed: {e}")
+                st.error(f"""
+                ❌ **Unexpected error during conversion**
+                
+                Error type: {type(e).__name__}
+                Error message: {e}
+                
+                Please report this issue if it persists.
+                """)
+                # Show traceback for debugging
                 import traceback
                 with st.expander("🐛 Error Details"):
                     st.code(traceback.format_exc())

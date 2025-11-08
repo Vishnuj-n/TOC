@@ -1,6 +1,8 @@
 """NFA to DFA conversion using subset construction algorithm."""
 
 from typing import Dict, List, Tuple, Set, FrozenSet
+from collections import deque
+import time
 
 
 def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
@@ -43,7 +45,7 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
     dfa_states: Dict[FrozenSet[str], str] = {}
     dfa_transitions: Dict[str, Dict[str, str]] = {}
     dfa_final_states: List[str] = []
-    queue: List[FrozenSet[str]] = []
+    queue: deque = deque()  # Use deque for O(1) popleft instead of O(n) list.pop(0)
     
     def get_dfa_state_name(nfa_state_set: FrozenSet[str]) -> str:
         """Get or create the canonical name for a DFA state."""
@@ -72,17 +74,28 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
     queue.append(initial_set)
     initial_dfa_state = get_dfa_state_name(initial_set)
     
+    # Estimate worst-case state explosion
+    max_possible_states = 2 ** len(states)
+    
     logs.extend([
         "STEP 1: Initialize DFA",
         f"  Initial DFA state: {initial_dfa_state} (from NFA state {start_state})",
-        ""
+        f"  Maximum possible DFA states: {max_possible_states}",
     ])
     
+    if max_possible_states > 1024:
+        logs.append(f"  ⚠️ WARNING: This NFA may produce a very large DFA!")
+        logs.append(f"     Theoretical maximum: {max_possible_states} states")
+        logs.append(f"     Actual size depends on reachability")
+    
+    logs.append("")
+    
     step_counter = 2
+    start_time = time.time()
     
     # Process queue
     while queue:
-        current_nfa_set = queue.pop(0)
+        current_nfa_set = queue.popleft()  # O(1) operation with deque
         current_dfa_state = get_dfa_state_name(current_nfa_set)
         
         logs.extend([
@@ -110,6 +123,10 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
         logs.append("")
         step_counter += 1
     
+    # Calculate performance metrics
+    elapsed_time = time.time() - start_time
+    total_transitions = sum(len(trans) for trans in dfa_transitions.values())
+    
     # Determine final states
     logs.extend([
         f"STEP {step_counter}: Determine final states",
@@ -128,6 +145,12 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
         "=" * 60,
         f"DFA has {len(dfa_states)} states: {list(dfa_states.values())}",
         f"DFA final states: {dfa_final_states}",
+        "",
+        "Performance Metrics:",
+        f"  Conversion time: {elapsed_time:.4f} seconds",
+        f"  DFA states created: {len(dfa_states)}",
+        f"  DFA transitions: {total_transitions}",
+        f"  States reduced by: {max_possible_states - len(dfa_states)} (from max {max_possible_states})",
         ""
     ])
     
