@@ -166,7 +166,7 @@ def main():
                 
                 # Auto-navigate to conversion page
                 st.success("🎉 NFA successfully built! Redirecting to conversion page...")
-                st.switch_page("3_🔄_Convert_NFA_DFA.py")  # From pages/, use relative path
+                st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
                 
                 # The code below won't execute due to page switch, but keep for preview mode
                 st.markdown("---")

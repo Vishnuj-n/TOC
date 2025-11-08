@@ -218,7 +218,7 @@ def main():
                     st.session_state['nfa_data'] = nfa_data
                     st.balloons()
                     st.success(f"🎉 NFA saved from: {source}! Redirecting to conversion page...")
-                    st.switch_page("3_🔄_Convert_NFA_DFA.py")  # From pages/, use relative path
+                    st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
             
             with col2:
                 if st.button("🏠 Back to Home", use_container_width=True):
