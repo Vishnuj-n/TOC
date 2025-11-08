@@ -210,21 +210,17 @@ def main():
         if is_valid:
             st.success(f"✅ {message}")
             
-            # Save button
-            col1, col2, col3 = st.columns(3)
+            # Save and auto-redirect button
+            col1, col2 = st.columns(2)
             
             with col1:
-                if st.button("💾 Save NFA", type="primary", use_container_width=True):
+                if st.button("💾 Save & Convert to DFA →", type="primary", use_container_width=True):
                     st.session_state['nfa_data'] = nfa_data
                     st.balloons()
-                    st.success(f"🎉 NFA saved from: {source}")
+                    st.success(f"🎉 NFA saved from: {source}! Redirecting to conversion page...")
+                    st.switch_page("3_🔄_Convert_NFA_DFA.py")  # From pages/, use relative path
             
             with col2:
-                if st.button("🔄 Convert to DFA →", use_container_width=True):
-                    st.session_state['nfa_data'] = nfa_data
-                    st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
-            
-            with col3:
                 if st.button("🏠 Back to Home", use_container_width=True):
                     st.switch_page("main.py")
             
