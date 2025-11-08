@@ -1,7 +1,4 @@
-"""NFA to DFA conversion using subset construction algorithm.
-
-This module provides the core conversion logic that is independent of any UI framework.
-"""
+"""NFA to DFA conversion using subset construction algorithm."""
 
 from typing import Dict, List, Tuple, Set, FrozenSet
 
@@ -10,89 +7,64 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
     """Convert an NFA to a DFA using the subset construction algorithm.
     
     Args:
-        nfa_data: Dictionary containing NFA specification with keys:
-            - states: list[str] - List of state names
-            - alphabet: list[str] - Input alphabet symbols
-            - start_state: str - Initial state
-            - final_states: list[str] - Accepting states
-            - transitions: dict[str, dict[str, list[str]]] - Transition function
+        nfa_data: Dictionary with NFA specification (states, alphabet, start_state, 
+                  final_states, transitions)
     
     Returns:
-        Tuple containing:
-            - dfa_data: Dictionary with same structure as NFA but with deterministic transitions
-            - log_lines: List of strings describing each step of the conversion
+        Tuple of (dfa_data dict, log_lines list)
     
     Raises:
-        ValueError: If NFA data is invalid or malformed
-    
-    Example:
-        >>> nfa = {
-        ...     "states": ["q0", "q1"],
-        ...     "alphabet": ["a", "b"],
-        ...     "start_state": "q0",
-        ...     "final_states": ["q1"],
-        ...     "transitions": {
-        ...         "q0": {"a": ["q0", "q1"]},
-        ...         "q1": {"b": ["q1"]}
-        ...     }
-        ... }
-        >>> dfa, logs = convert_nfa_to_dfa(nfa)
+        ValueError: If NFA data is invalid
     """
     logs: List[str] = []
     
-    # Validate input
+    # Extract and validate input
     try:
-        states = nfa_data["states"]
-        alphabet = nfa_data["alphabet"]
-        start_state = nfa_data["start_state"]
-        final_states = nfa_data["final_states"]
+        states, alphabet = nfa_data["states"], nfa_data["alphabet"]
+        start_state, final_states = nfa_data["start_state"], nfa_data["final_states"]
         transitions = nfa_data["transitions"]
     except KeyError as e:
         raise ValueError(f"Invalid NFA data: missing key {e}")
     
-    logs.append("=" * 60)
-    logs.append("NFA TO DFA CONVERSION - SUBSET CONSTRUCTION ALGORITHM")
-    logs.append("=" * 60)
-    logs.append("")
-    logs.append(f"Input NFA has {len(states)} states: {states}")
-    logs.append(f"Alphabet: {alphabet}")
-    logs.append(f"Start state: {start_state}")
-    logs.append(f"Final states: {final_states}")
-    logs.append("")
+    # Log header
+    logs.extend([
+        "=" * 60,
+        "NFA TO DFA CONVERSION - SUBSET CONSTRUCTION ALGORITHM",
+        "=" * 60,
+        "",
+        f"Input NFA has {len(states)} states: {states}",
+        f"Alphabet: {alphabet}",
+        f"Start state: {start_state}",
+        f"Final states: {final_states}",
+        ""
+    ])
     
     # DFA state tracking
-    # Each DFA state is a frozenset of NFA states
     dfa_states: Dict[FrozenSet[str], str] = {}
     dfa_transitions: Dict[str, Dict[str, str]] = {}
     dfa_final_states: List[str] = []
-    
-    # Queue of DFA states to process
     queue: List[FrozenSet[str]] = []
     
-    # Helper function to get or create DFA state name
     def get_dfa_state_name(nfa_state_set: FrozenSet[str]) -> str:
-        """Convert a set of NFA states to a DFA state name."""
+        """Get or create the canonical name for a DFA state."""
+        if nfa_state_set in dfa_states:
+            return dfa_states[nfa_state_set]
+        
         if not nfa_state_set:
-            return "∅"  # Empty set (dead state)
+            dfa_state_name = "∅"
+        else:
+            dfa_state_name = "{" + ",".join(sorted(nfa_state_set)) + "}"
         
-        if nfa_state_set not in dfa_states:
-            # Create new DFA state name
-            sorted_states = sorted(nfa_state_set)
-            dfa_state_name = "{" + ",".join(sorted_states) + "}"
-            dfa_states[nfa_state_set] = dfa_state_name
-            logs.append(f"  → Created new DFA state: {dfa_state_name}")
-        
-        return dfa_states[nfa_state_set]
+        dfa_states[nfa_state_set] = dfa_state_name
+        logs.append(f"  → Created new DFA state: {dfa_state_name}")
+        return dfa_state_name
     
-    # Helper function to compute transition from a set of NFA states
     def compute_transition(nfa_state_set: FrozenSet[str], symbol: str) -> FrozenSet[str]:
         """Compute the set of NFA states reachable from a set via a symbol."""
-        result_states: Set[str] = set()
-        
+        result_states = set()
         for nfa_state in nfa_state_set:
             if nfa_state in transitions and symbol in transitions[nfa_state]:
                 result_states.update(transitions[nfa_state][symbol])
-        
         return frozenset(result_states)
     
     # Initialize with start state
@@ -100,9 +72,11 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
     queue.append(initial_set)
     initial_dfa_state = get_dfa_state_name(initial_set)
     
-    logs.append("STEP 1: Initialize DFA")
-    logs.append(f"  Initial DFA state: {initial_dfa_state} (from NFA state {start_state})")
-    logs.append("")
+    logs.extend([
+        "STEP 1: Initialize DFA",
+        f"  Initial DFA state: {initial_dfa_state} (from NFA state {start_state})",
+        ""
+    ])
     
     step_counter = 2
     
@@ -111,25 +85,25 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
         current_nfa_set = queue.pop(0)
         current_dfa_state = get_dfa_state_name(current_nfa_set)
         
-        logs.append(f"STEP {step_counter}: Processing DFA state {current_dfa_state}")
-        logs.append(f"  (represents NFA states: {sorted(current_nfa_set)})")
+        logs.extend([
+            f"STEP {step_counter}: Processing DFA state {current_dfa_state}",
+            f"  (represents NFA states: {sorted(current_nfa_set)})"
+        ])
         
-        # Initialize transitions for this DFA state
-        if current_dfa_state not in dfa_transitions:
-            dfa_transitions[current_dfa_state] = {}
+        dfa_transitions.setdefault(current_dfa_state, {})
         
-        # For each symbol in alphabet
         for symbol in alphabet:
             next_nfa_set = compute_transition(current_nfa_set, symbol)
-            next_dfa_state = get_dfa_state_name(next_nfa_set)
             
-            # Record transition
+            # Check if this is a new state BEFORE creating it in dfa_states
+            is_new_state = next_nfa_set not in dfa_states
+            
+            next_dfa_state = get_dfa_state_name(next_nfa_set)
             dfa_transitions[current_dfa_state][symbol] = next_dfa_state
             
             logs.append(f"  On input '{symbol}': {current_dfa_state} → {next_dfa_state}")
             
-            # Add to queue if new state
-            if next_nfa_set and next_nfa_set not in dfa_states:
+            if is_new_state:
                 queue.append(next_nfa_set)
                 logs.append(f"    (New state discovered, added to queue)")
         
@@ -137,33 +111,33 @@ def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
         step_counter += 1
     
     # Determine final states
-    logs.append(f"STEP {step_counter}: Determine final states")
-    logs.append(f"  NFA final states: {final_states}")
+    logs.extend([
+        f"STEP {step_counter}: Determine final states",
+        f"  NFA final states: {final_states}"
+    ])
     
     for nfa_state_set, dfa_state_name in dfa_states.items():
-        # A DFA state is final if it contains any NFA final state
         if any(nfa_final in nfa_state_set for nfa_final in final_states):
             dfa_final_states.append(dfa_state_name)
             logs.append(f"  {dfa_state_name} is final (contains {[s for s in nfa_state_set if s in final_states]})")
     
-    logs.append("")
-    logs.append("=" * 60)
-    logs.append("CONVERSION COMPLETE")
-    logs.append("=" * 60)
-    logs.append(f"DFA has {len(dfa_states)} states: {list(dfa_states.values())}")
-    logs.append(f"DFA final states: {dfa_final_states}")
-    logs.append("")
+    logs.extend([
+        "",
+        "=" * 60,
+        "CONVERSION COMPLETE",
+        "=" * 60,
+        f"DFA has {len(dfa_states)} states: {list(dfa_states.values())}",
+        f"DFA final states: {dfa_final_states}",
+        ""
+    ])
     
-    # Build DFA output
-    dfa_data = {
+    return {
         "states": list(dfa_states.values()),
         "alphabet": alphabet,
         "start_state": get_dfa_state_name(frozenset([start_state])),
         "final_states": dfa_final_states,
         "transitions": dfa_transitions
-    }
-    
-    return dfa_data, logs
+    }, logs
 
 
 def validate_nfa(nfa_data: dict) -> Tuple[bool, str]:
@@ -182,27 +156,22 @@ def validate_nfa(nfa_data: dict) -> Tuple[bool, str]:
         if key not in nfa_data:
             return False, f"Missing required key: {key}"
     
-    states = nfa_data["states"]
-    alphabet = nfa_data["alphabet"]
-    start_state = nfa_data["start_state"]
-    final_states = nfa_data["final_states"]
+    states, alphabet = nfa_data["states"], nfa_data["alphabet"]
+    start_state, final_states = nfa_data["start_state"], nfa_data["final_states"]
     transitions = nfa_data["transitions"]
     
     # Validate types
-    if not isinstance(states, list):
-        return False, "'states' must be a list"
+    type_checks = [
+        (states, list, "'states' must be a list"),
+        (alphabet, list, "'alphabet' must be a list"),
+        (start_state, str, "'start_state' must be a string"),
+        (final_states, list, "'final_states' must be a list"),
+        (transitions, dict, "'transitions' must be a dictionary")
+    ]
     
-    if not isinstance(alphabet, list):
-        return False, "'alphabet' must be a list"
-    
-    if not isinstance(start_state, str):
-        return False, "'start_state' must be a string"
-    
-    if not isinstance(final_states, list):
-        return False, "'final_states' must be a list"
-    
-    if not isinstance(transitions, dict):
-        return False, "'transitions' must be a dictionary"
+    for value, expected_type, error_msg in type_checks:
+        if not isinstance(value, expected_type):
+            return False, error_msg
     
     # Validate start state
     if start_state not in states:
