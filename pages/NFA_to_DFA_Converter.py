@@ -20,7 +20,7 @@ def main():
         st.info("👈 Create an NFA first using the Manual Builder.")
         st.markdown("### 📝 Manual Builder\nBuild step-by-step")
         if st.button("Go to Manual Builder →", use_container_width=True, type="primary"):
-            st.switch_page("pages/1_📝_Manual_Builder.py")
+            st.switch_page("pages/Manual_NFA_Builder.py")
         st.stop()
     
     nfa_data = st.session_state['nfa_data']

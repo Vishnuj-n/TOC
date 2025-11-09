@@ -16,12 +16,12 @@ def main():
     with col1:
         st.markdown("### 📝 Manual Builder\n**Best for learning**\n\nBuild NFAs step-by-step with interactive forms and visual preview.")
         if st.button("📝 Start Manual Builder →", use_container_width=True, type="primary"):
-            st.switch_page("pages/1_📝_Manual_Builder.py")
+            st.switch_page("pages/Manual_NFA_Builder.py")
     
     with col2:
         st.markdown("### 🔄 Convert & Visualize\n**View results**\n\nSee graphs, algorithm traces, and comparisons.")
         if st.button("🔄 Convert & Visualize →", use_container_width=True):
-            st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+            st.switch_page("pages/NFA_to_DFA_Converter.py")
     
     st.markdown("---")
     st.header("✨ Features")
@@ -56,9 +56,9 @@ def main():
     
     with st.sidebar:
         st.header("📋 Navigation")
-        for emoji, name, page in [("📝", "Manual Builder", "pages/1_📝_Manual_Builder.py"),
-                                   ("", "Convert & Visualize", "pages/3_🔄_Convert_NFA_DFA.py"),
-                                   ("ℹ️", "About & Help", "pages/4_ℹ️_About.py")]:
+        for emoji, name, page in [("📝", "Manual Builder", "pages/Manual_NFA_Builder.py"),
+                                   ("", "Convert & Visualize", "pages/NFA_to_DFA_Converter.py"),
+                                   ("ℹ️", "About & Help", "pages/About.py")]:
             if st.button(f"{emoji} {name}", use_container_width=True):
                 st.switch_page(page)
         

@@ -266,7 +266,7 @@ def main():
                     st.session_state['nfa_data'] = nfa_data
                     st.balloons()
                     st.success("🎉 NFA built successfully! Redirecting to converter...")
-                    st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+                    st.switch_page("pages/NFA_to_DFA_Converter.py")
                 if preview_json:
                     st.markdown("---")
                     st.subheader("👁️ JSON Preview")

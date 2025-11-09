@@ -139,9 +139,8 @@ SubsetConstruction(NFA):
     with st.sidebar:
         st.header("🔗 Quick Links")
         for emoji, name, page in [("🏠", "Home", "main.py"),
-                                   ("📝", "Manual Builder", "pages/1_📝_Manual_Builder.py"),
-                                   ("📤", "Import JSON", "pages/2_📤_Import_JSON.py"),
-                                   ("🔄", "Convert & Visualize", "pages/3_�_Convert_NFA_DFA.py")]:
+                                   ("📝", "Manual Builder", "pages/Manual_NFA_Builder.py"),
+                                   ("🔄", "Convert & Visualize", "pages/NFA_to_DFA_Converter.py")]:
             if st.button(f"{emoji} {name}", use_container_width=True):
                 st.switch_page(page)
         

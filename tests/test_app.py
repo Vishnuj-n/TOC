@@ -40,14 +40,14 @@ class TestManualBuilderPage:
     
     def test_manual_builder_loads(self):
         """Test that the manual builder page loads."""
-        at = AppTest.from_file("pages/1_📝_Manual_Builder.py")
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at.run()
         assert not at.exception
         assert "Manual NFA Builder" in at.title[0].value
     
     def test_form_exists(self):
         """Test that the NFA builder form exists."""
-        at = AppTest.from_file("pages/1_📝_Manual_Builder.py")
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at.run()
         
         # Form should exist
@@ -55,7 +55,7 @@ class TestManualBuilderPage:
     
     def test_build_simple_nfa(self):
         """Test building a simple NFA through the form."""
-        at = AppTest.from_file("pages/1_📝_Manual_Builder.py")
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at.run()
         
         # Fill in states (first text input)
@@ -74,14 +74,14 @@ class TestConvertPage:
     
     def test_convert_page_loads(self):
         """Test that the convert page loads."""
-        at = AppTest.from_file("pages/3_🔄_Convert_NFA_DFA.py")
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py")
         at.run()
         assert not at.exception
         assert "Convert NFA to DFA" in at.title[0].value
     
     def test_no_nfa_warning(self):
         """Test that warning is shown when no NFA is loaded."""
-        at = AppTest.from_file("pages/3_🔄_Convert_NFA_DFA.py")
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py")
         at.run()
         
         # Should show warning when no NFA is loaded
@@ -89,7 +89,7 @@ class TestConvertPage:
     
     def test_convert_with_nfa(self):
         """Test conversion when NFA is in session state."""
-        at = AppTest.from_file("pages/3_🔄_Convert_NFA_DFA.py", default_timeout=10)
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
         
         # Set NFA in session state
         valid_nfa = {
@@ -274,7 +274,7 @@ class TestIntegrationWorkflows:
     def test_manual_builder_to_conversion_workflow(self):
         """Test complete workflow: Manual builder -> Auto-redirect -> Conversion."""
         # Step 1: Build NFA in Manual Builder
-        at_builder = AppTest.from_file("pages/1_📝_Manual_Builder.py")
+        at_builder = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at_builder.run()
         
         # Fill in the form
@@ -301,7 +301,7 @@ class TestIntegrationWorkflows:
             }
         }
         
-        at = AppTest.from_file("pages/3_🔄_Convert_NFA_DFA.py", default_timeout=10)
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
         at.session_state["nfa_data"] = valid_nfa
         at.run()
         
@@ -324,9 +324,9 @@ class TestIntegrationWorkflows:
         """Test that all pages can be loaded and navigated between."""
         pages = [
             "main.py",
-            "pages/1_📝_Manual_Builder.py",
-            "pages/3_🔄_Convert_NFA_DFA.py",
-            "pages/4_ℹ️_About.py"
+            "pages/Manual_NFA_Builder.py",
+            "pages/NFA_to_DFA_Converter.py",
+            "pages/About.py"
         ]
         
         for page_path in pages:
@@ -341,7 +341,7 @@ class TestIntegrationWorkflows:
     
     def test_clear_nfa_functionality(self):
         """Test that clearing NFA works correctly."""
-        at = AppTest.from_file("pages/3_🔄_Convert_NFA_DFA.py", default_timeout=10)
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
         
         # Load NFA first
         valid_nfa = {
