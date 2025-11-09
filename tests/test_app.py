@@ -5,7 +5,6 @@ Test suite for the NFA to DFA Visualizer multi-page app using Streamlit's app te
 
 import pytest
 from streamlit.testing.v1 import AppTest
-import json
 
 
 class TestMainPage:
@@ -22,21 +21,11 @@ class TestMainPage:
         """Test that navigation buttons are present."""
         at = AppTest.from_file("main.py")
         at.run()
-        
-        # Check that buttons exist (in main content and sidebar)
-        assert len(at.button) >= 4  # At least 4 navigation buttons
-    
-    def test_example_nfa_displayed(self):
-        """Test that example NFA is shown."""
-        at = AppTest.from_file("main.py")
-        at.run()
-        
-        # Check that JSON is rendered
-        assert len(at.json) >= 1
+        assert len(at.button) >= 2  # Manual Builder and Convert buttons
 
 
 class TestManualBuilderPage:
-    """Tests for the Manual Builder page."""
+    """Tests for the step-based Manual Builder page."""
     
     def test_manual_builder_loads(self):
         """Test that the manual builder page loads."""
@@ -45,28 +34,112 @@ class TestManualBuilderPage:
         assert not at.exception
         assert "Manual NFA Builder" in at.title[0].value
     
-    def test_form_exists(self):
-        """Test that the NFA builder form exists."""
+    def test_initial_state_shows_step1_only(self):
+        """Test that initially only Step 1 is accessible."""
         at = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at.run()
         
-        # Form should exist
-        assert len(at.text_input) >= 2  # At least states and alphabet inputs
+        # Should have progress indicators
+        assert len(at.success) + len(at.info) + len(at.warning) >= 3  # 3 progress steps
+        
+        # Should have Step 1 form with states and alphabet inputs
+        assert len(at.text_input) >= 2
     
-    def test_build_simple_nfa(self):
-        """Test building a simple NFA through the form."""
+    def test_step1_completion_unlocks_step2(self):
+        """Test that completing Step 1 unlocks Step 2."""
         at = AppTest.from_file("pages/Manual_NFA_Builder.py")
         at.run()
         
-        # Fill in states (first text input)
+        # Fill in Step 1
         at.text_input[0].input("q0, q1").run()
-        
-        # Fill in alphabet (second text input)
         at.text_input[1].input("a, b").run()
         
-        # Note: We can't fully test the page switch in AppTest,
-        # but we can verify the form works up to this point
-        assert not at.exception or "Could not find page" in str(at.exception[0].message)
+        # Click Next button (should be first form submit button)
+        at.button[0].click().run()
+        
+        # Check that session state was updated
+        assert at.session_state["step1_completed"] == True
+        assert "q0" in at.session_state["builder_states"]
+        assert "a" in at.session_state["builder_alphabet"]
+    
+    def test_step1_reset_clears_all_data(self):
+        """Test that Reset All button clears all session data."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
+        
+        # Set some session state
+        at.session_state["builder_states"] = ["q0", "q1"]
+        at.session_state["step1_completed"] = True
+        at.run()
+        
+        # Click Reset All button (should be second button in Step 1 form)
+        at.button[1].click().run()
+        
+        # Check that session state was cleared
+        assert "step1_completed" not in at.session_state or at.session_state["step1_completed"] == False
+    
+    def test_step1_validation_requires_states_and_alphabet(self):
+        """Test that Step 1 validates required fields."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
+        
+        # Try to submit with empty states
+        at.text_input[0].input("").run()
+        at.text_input[1].input("a, b").run()
+        at.button[0].click().run()
+        
+        # Should show error
+        assert len(at.error) > 0
+    
+    def test_step2_shows_after_step1_completion(self):
+        """Test that Step 2 appears after Step 1 is completed."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
+        
+        # Complete Step 1
+        at.session_state["builder_states"] = ["q0", "q1"]
+        at.session_state["builder_alphabet"] = ["a", "b"]
+        at.session_state["step1_completed"] = True
+        at.run()
+        
+        # Should have selectbox for start state and multiselect for final states
+        assert len(at.selectbox) >= 1
+        assert len(at.multiselect) >= 1
+    
+    def test_step3_shows_transition_inputs(self):
+        """Test that Step 3 shows transition input fields."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
+        
+        # Complete Steps 1 and 2
+        at.session_state["builder_states"] = ["q0", "q1"]
+        at.session_state["builder_alphabet"] = ["a", "b"]
+        at.session_state["builder_start_state"] = "q0"
+        at.session_state["builder_final_states"] = ["q1"]
+        at.session_state["step1_completed"] = True
+        at.session_state["step2_completed"] = True
+        at.run()
+        
+        # Should have transition inputs (2 states × 2 symbols = 4 inputs, plus Step 1 inputs)
+        assert len(at.text_input) >= 6  # 2 for Step 1 + 4 for transitions
+    
+    def test_transition_summary_displays(self):
+        """Test that transition summary table displays correctly."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
+        
+        # Set up completed Steps 1 and 2
+        at.session_state["builder_states"] = ["q0", "q1"]
+        at.session_state["builder_alphabet"] = ["a"]
+        at.session_state["builder_start_state"] = "q0"
+        at.session_state["builder_final_states"] = ["q1"]
+        at.session_state["step1_completed"] = True
+        at.session_state["step2_completed"] = True
+        at.session_state["builder_transitions"] = {"q0": {"a": ["q1"]}}
+        at.run()
+        
+        # Should have dataframe for transition summary
+        assert len(at.dataframe) >= 1 or "No transitions" in str(at.warning)
 
 
 class TestConvertPage:
@@ -79,19 +152,19 @@ class TestConvertPage:
         assert not at.exception
         assert "Convert NFA to DFA" in at.title[0].value
     
-    def test_no_nfa_warning(self):
+    def test_no_nfa_shows_warning_and_redirect(self):
         """Test that warning is shown when no NFA is loaded."""
         at = AppTest.from_file("pages/NFA_to_DFA_Converter.py")
         at.run()
         
-        # Should show warning when no NFA is loaded
+        # Should show warning and button to go to Manual Builder
         assert len(at.warning) >= 1
+        assert len(at.button) >= 1  # Go to Manual Builder button
     
-    def test_convert_with_nfa(self):
-        """Test conversion when NFA is in session state."""
+    def test_convert_with_valid_nfa(self):
+        """Test conversion when valid NFA is in session state."""
         at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
         
-        # Set NFA in session state
         valid_nfa = {
             "states": ["q0", "q1"],
             "alphabet": ["a", "b"],
@@ -106,21 +179,9 @@ class TestConvertPage:
         at.session_state["nfa_data"] = valid_nfa
         at.run()
         
-        # Should not show warning
-        # Should have convert button
-        assert len(at.button) >= 1
-        
-        # Click convert button (first button) with extended timeout
-        try:
-            at.button[0].click().run(timeout=10)
-        except RuntimeError:
-            # Timeout is acceptable for this test
-            pass
-        
-        # Check that conversion succeeded (should have DFA in session state)
-        # Note: Due to timeout, we may not get to this assertion
-        # assert "dfa_data" in at.session_state
-        # assert "conversion_logs" in at.session_state
+        # Should show NFA data and have convert button
+        assert len(at.button) >= 1  # Convert to DFA button
+        assert len(at.json) >= 1 or len(at.code) >= 1  # NFA JSON displayed
 
 
 class TestAboutPage:
@@ -133,28 +194,22 @@ class TestAboutPage:
         assert not at.exception
         assert "About & Help" in at.title[0].value
     
-    def test_tabs_exist(self):
-        """Test that documentation tabs exist."""
+    def test_documentation_tabs_exist(self):
+        """Test that documentation tabs are present."""
         at = AppTest.from_file("pages/About.py")
         at.run()
-        
-        # Should have multiple tabs
         assert len(at.tabs) >= 1
-    
-    def test_examples_shown(self):
-        """Test that examples are displayed."""
-        at = AppTest.from_file("pages/About.py")
-        at.run()
-        
-        # Should have JSON examples
-        assert len(at.json) >= 1
 
 
-class TestNFAValidation:
-    """Tests for NFA validation logic."""
+# ============================================================================
+# LOGIC TESTS - Testing core NFA/DFA conversion logic
+# ============================================================================
+
+class TestNFAValidationLogic:
+    """Unit tests for NFA validation logic."""
     
-    def test_valid_nfa(self):
-        """Test validation of a valid NFA."""
+    def test_valid_nfa_passes_validation(self):
+        """Test that a properly structured NFA passes validation."""
         from nfa_to_dfa import validate_nfa
         
         valid_nfa = {
@@ -170,33 +225,79 @@ class TestNFAValidation:
         
         is_valid, message = validate_nfa(valid_nfa)
         assert is_valid
+        assert message == "Valid NFA"
     
-    def test_missing_keys(self):
-        """Test validation fails with missing keys."""
+    def test_missing_required_keys_fails(self):
+        """Test that NFA missing required keys fails validation."""
         from nfa_to_dfa import validate_nfa
         
-        invalid_nfa = {
-            "states": ["q0", "q1"],
-            "alphabet": ["a", "b"]
-            # Missing start_state, final_states, transitions
-        }
+        invalid_nfa = {"states": ["q0"], "alphabet": ["a"]}
         
         is_valid, message = validate_nfa(invalid_nfa)
         assert not is_valid
         assert "Missing required key" in message
     
-    def test_invalid_start_state(self):
-        """Test validation fails with invalid start state."""
+    def test_invalid_start_state_fails(self):
+        """Test that invalid start state fails validation."""
         from nfa_to_dfa import validate_nfa
         
         invalid_nfa = {
             "states": ["q0", "q1"],
-            "alphabet": ["a", "b"],
+            "alphabet": ["a"],
             "start_state": "q2",  # Not in states
             "final_states": ["q1"],
+            "transitions": {}
+        }
+        
+        is_valid, message = validate_nfa(invalid_nfa)
+        assert not is_valid
+        assert "not in states list" in message
+    
+    def test_invalid_final_state_fails(self):
+        """Test that invalid final state fails validation."""
+        from nfa_to_dfa import validate_nfa
+        
+        invalid_nfa = {
+            "states": ["q0", "q1"],
+            "alphabet": ["a"],
+            "start_state": "q0",
+            "final_states": ["q2"],  # Not in states
+            "transitions": {}
+        }
+        
+        is_valid, message = validate_nfa(invalid_nfa)
+        assert not is_valid
+        assert "not in states list" in message
+    
+    def test_invalid_transition_symbol_fails(self):
+        """Test that transition with invalid symbol fails validation."""
+        from nfa_to_dfa import validate_nfa
+        
+        invalid_nfa = {
+            "states": ["q0", "q1"],
+            "alphabet": ["a"],
+            "start_state": "q0",
+            "final_states": ["q1"],
             "transitions": {
-                "q0": {"a": ["q1"]},
-                "q1": {"b": ["q1"]}
+                "q0": {"b": ["q1"]}  # 'b' not in alphabet
+            }
+        }
+        
+        is_valid, message = validate_nfa(invalid_nfa)
+        assert not is_valid
+        assert "not in alphabet" in message
+    
+    def test_invalid_transition_destination_fails(self):
+        """Test that transition to non-existent state fails validation."""
+        from nfa_to_dfa import validate_nfa
+        
+        invalid_nfa = {
+            "states": ["q0", "q1"],
+            "alphabet": ["a"],
+            "start_state": "q0",
+            "final_states": ["q1"],
+            "transitions": {
+                "q0": {"a": ["q2"]}  # q2 not in states
             }
         }
         
@@ -205,11 +306,11 @@ class TestNFAValidation:
         assert "not in states list" in message
 
 
-class TestNFAToDFAConversion:
-    """Tests for NFA to DFA conversion logic."""
+class TestNFAToDFAConversionLogic:
+    """Unit tests for NFA to DFA conversion algorithm."""
     
-    def test_simple_conversion(self):
-        """Test conversion of a simple NFA."""
+    def test_deterministic_nfa_conversion(self):
+        """Test conversion of already deterministic NFA."""
         from nfa_to_dfa import convert_nfa_to_dfa
         
         nfa = {
@@ -225,18 +326,13 @@ class TestNFAToDFAConversion:
         
         dfa, logs = convert_nfa_to_dfa(nfa)
         
-        # Check DFA structure
-        assert "states" in dfa
-        assert "alphabet" in dfa
-        assert "start_state" in dfa
-        assert "final_states" in dfa
-        assert "transitions" in dfa
-        
-        # Check logs were generated
-        assert len(logs) > 0
+        # DFA should have same or similar number of states
+        assert len(dfa["states"]) <= 3  # Should be compact
+        assert dfa["alphabet"] == nfa["alphabet"]
+        assert len(logs) > 0  # Logs should be generated
     
-    def test_nondeterministic_conversion(self):
-        """Test conversion of a nondeterministic NFA."""
+    def test_nondeterministic_nfa_conversion(self):
+        """Test conversion of nondeterministic NFA with multiple transitions."""
         from nfa_to_dfa import convert_nfa_to_dfa
         
         nfa = {
@@ -245,83 +341,90 @@ class TestNFAToDFAConversion:
             "start_state": "q0",
             "final_states": ["q2"],
             "transitions": {
-                "q0": {
-                    "a": ["q0", "q1"],  # Nondeterministic!
-                    "b": ["q0"]
-                },
-                "q1": {
-                    "b": ["q2"]
-                },
-                "q2": {
-                    "a": ["q2"],
-                    "b": ["q2"]
-                }
-            }
-        }
-        
-        dfa, logs = convert_nfa_to_dfa(nfa)
-        
-        # DFA should have more states due to subset construction
-        assert len(dfa["states"]) >= len(nfa["states"])
-        
-        # Check that conversion log is detailed
-        assert any("STEP" in log for log in logs)
-
-
-class TestIntegrationWorkflows:
-    """Integration tests for end-to-end workflows using AppTest."""
-    
-    def test_manual_builder_to_conversion_workflow(self):
-        """Test complete workflow: Manual builder -> Auto-redirect -> Conversion."""
-        # Step 1: Build NFA in Manual Builder
-        at_builder = AppTest.from_file("pages/Manual_NFA_Builder.py")
-        at_builder.run()
-        
-        # Fill in the form
-        at_builder.text_input[0].input("q0, q1, q2").run()
-        at_builder.text_input[1].input("a, b").run()
-        
-        # The selectbox and multiselect should now have options
-        # We can't easily click through the form submission and page switch in tests,
-        # but we can verify the NFA is properly constructed
-        assert not at_builder.exception
-    
-    def test_full_conversion_pipeline(self):
-        """Test complete NFA to DFA conversion pipeline."""
-        # Setup: Create and load NFA
-        valid_nfa = {
-            "states": ["q0", "q1", "q2"],
-            "alphabet": ["a", "b"],
-            "start_state": "q0",
-            "final_states": ["q2"],
-            "transitions": {
-                "q0": {"a": ["q0", "q1"], "b": ["q0"]},
+                "q0": {"a": ["q0", "q1"], "b": ["q0"]},  # Non-deterministic on 'a'
                 "q1": {"b": ["q2"]},
                 "q2": {"a": ["q2"], "b": ["q2"]}
             }
         }
         
-        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
-        at.session_state["nfa_data"] = valid_nfa
-        at.run()
+        dfa, logs = convert_nfa_to_dfa(nfa)
         
-        # Should not show warning (NFA is loaded)
-        # Find and click convert button
-        convert_clicked = False
-        for i, button in enumerate(at.button):
-            if "Convert to DFA" in button.label:
-                try:
-                    at.button[i].click().run(timeout=10)
-                    convert_clicked = True
-                except RuntimeError:
-                    # Timeout is acceptable for conversion
-                    convert_clicked = True
-                break
-        
-        assert convert_clicked
+        # DFA should have combined states
+        assert len(dfa["states"]) >= 3
+        assert any("{" in state for state in dfa["states"])  # Should have combined states like {q0,q1}
+        assert "STEP" in " ".join(logs)  # Should have step-by-step logs
     
-    def test_navigation_between_pages(self):
-        """Test that all pages can be loaded and navigated between."""
+    def test_conversion_preserves_alphabet(self):
+        """Test that conversion preserves the alphabet."""
+        from nfa_to_dfa import convert_nfa_to_dfa
+        
+        nfa = {
+            "states": ["q0", "q1"],
+            "alphabet": ["x", "y", "z"],
+            "start_state": "q0",
+            "final_states": ["q1"],
+            "transitions": {
+                "q0": {"x": ["q1"], "y": ["q0"], "z": ["q0"]},
+                "q1": {"x": ["q1"], "y": ["q1"], "z": ["q1"]}
+            }
+        }
+        
+        dfa, _ = convert_nfa_to_dfa(nfa)
+        assert dfa["alphabet"] == ["x", "y", "z"]
+    
+    def test_conversion_marks_final_states_correctly(self):
+        """Test that DFA final states are marked correctly."""
+        from nfa_to_dfa import convert_nfa_to_dfa
+        
+        nfa = {
+            "states": ["q0", "q1", "q2"],
+            "alphabet": ["a"],
+            "start_state": "q0",
+            "final_states": ["q2"],
+            "transitions": {
+                "q0": {"a": ["q1"]},
+                "q1": {"a": ["q2"]},
+                "q2": {"a": ["q2"]}
+            }
+        }
+        
+        dfa, _ = convert_nfa_to_dfa(nfa)
+        
+        # Any DFA state containing q2 should be final
+        for state in dfa["final_states"]:
+            assert "q2" in state or state == "{q2}"
+    
+    def test_empty_transition_handling(self):
+        """Test that conversion handles states with no outgoing transitions."""
+        from nfa_to_dfa import convert_nfa_to_dfa
+        
+        nfa = {
+            "states": ["q0", "q1"],
+            "alphabet": ["a", "b"],
+            "start_state": "q0",
+            "final_states": ["q1"],
+            "transitions": {
+                "q0": {"a": ["q1"]},
+                "q1": {}  # No outgoing transitions
+            }
+        }
+        
+        dfa, logs = convert_nfa_to_dfa(nfa)
+        
+        # Should complete without error
+        assert "states" in dfa
+        assert len(logs) > 0
+
+
+# ============================================================================
+# INTEGRATION TESTS - Testing end-to-end workflows
+# ============================================================================
+
+class TestIntegrationWorkflows:
+    """Integration tests for complete user workflows."""
+    
+    def test_all_pages_load_successfully(self):
+        """Test that all pages can be loaded without errors."""
         pages = [
             "main.py",
             "pages/Manual_NFA_Builder.py",
@@ -332,18 +435,38 @@ class TestIntegrationWorkflows:
         for page_path in pages:
             at = AppTest.from_file(page_path)
             at.run()
-            
-            # Each page should load without exception
             assert not at.exception, f"Page {page_path} failed to load"
-            
-            # Each page should have a title
             assert len(at.title) > 0, f"Page {page_path} has no title"
     
-    def test_clear_nfa_functionality(self):
-        """Test that clearing NFA works correctly."""
-        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py", default_timeout=10)
+    def test_step_based_builder_workflow(self):
+        """Test the complete step-by-step builder workflow."""
+        at = AppTest.from_file("pages/Manual_NFA_Builder.py")
+        at.run()
         
-        # Load NFA first
+        # Initially, only Step 1 should be accessible
+        assert "step1_completed" not in at.session_state or at.session_state["step1_completed"] == False
+        
+        # Complete Step 1
+        at.session_state["builder_states"] = ["q0", "q1"]
+        at.session_state["builder_alphabet"] = ["a", "b"]
+        at.session_state["step1_completed"] = True
+        at.run()
+        
+        # Now Step 2 should be accessible
+        assert len(at.selectbox) >= 1
+        
+        # Complete Step 2
+        at.session_state["builder_start_state"] = "q0"
+        at.session_state["builder_final_states"] = ["q1"]
+        at.session_state["step2_completed"] = True
+        at.run()
+        
+        # Now Step 3 should show transition inputs
+        assert len(at.text_input) >= 4  # Step 1 inputs + transition inputs
+    
+    def test_nfa_to_dfa_conversion_workflow(self):
+        """Test complete workflow from NFA creation to DFA conversion."""
+        # Create a valid NFA
         valid_nfa = {
             "states": ["q0", "q1"],
             "alphabet": ["a", "b"],
@@ -355,17 +478,15 @@ class TestIntegrationWorkflows:
             }
         }
         
+        # Load converter page with NFA
+        at = AppTest.from_file("pages/NFA_to_DFA_Converter.py")
         at.session_state["nfa_data"] = valid_nfa
         at.run()
         
-        # Verify NFA is loaded
+        # Should show NFA and have convert button
         assert "nfa_data" in at.session_state
-        
-        # Note: Actually clicking the clear button causes a rerun which is hard to test
-        # So we just verify the page loads with the NFA
-        assert not at.exception
+        assert len(at.button) >= 1
 
 
-# Run tests with pytest
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
