@@ -128,14 +128,14 @@ class TestAboutPage:
     
     def test_about_page_loads(self):
         """Test that the about page loads."""
-        at = AppTest.from_file("pages/4_ℹ️_About.py")
+        at = AppTest.from_file("pages/About.py")
         at.run()
         assert not at.exception
         assert "About & Help" in at.title[0].value
     
     def test_tabs_exist(self):
         """Test that documentation tabs exist."""
-        at = AppTest.from_file("pages/4_ℹ️_About.py")
+        at = AppTest.from_file("pages/About.py")
         at.run()
         
         # Should have multiple tabs
@@ -143,7 +143,7 @@ class TestAboutPage:
     
     def test_examples_shown(self):
         """Test that examples are displayed."""
-        at = AppTest.from_file("pages/4_ℹ️_About.py")
+        at = AppTest.from_file("pages/About.py")
         at.run()
         
         # Should have JSON examples
