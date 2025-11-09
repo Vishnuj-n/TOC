@@ -1,0 +1,689 @@
+"""NFA to DFA Visualizer - Landing Page"""
+import streamlit as st
+
+st.set_page_config(page_title="NFA → DFA Visualizer", page_icon="🔄", layout="wide", initial_sidebar_state="expanded")
+
+def main():
+    st.title("🔄 NFA → DFA Visualizer")
+    st.markdown("""<div style='background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; margin-bottom: 2rem;'>
+    <h2 style='margin: 0; color: white;'>Transform NFAs into DFAs</h2>
+    <p style='margin: 0.5rem 0 0 0; font-size: 1.1rem;'>Using the <strong>Subset Construction Algorithm</strong></p>
+    </div>""", unsafe_allow_html=True)
+    
+    st.header("🚀 Quick Start")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("### 📝 Manual Builder\n**Best for learning**\n\nBuild NFAs step-by-step with interactive forms and visual preview.")
+        if st.button("📝 Start Manual Builder →", use_container_width=True, type="primary"):
+            st.switch_page("pages/1_📝_Manual_Builder.py")
+    
+    with col2:
+        st.markdown("### 📤 Import JSON\n**Best for existing NFAs**\n\nUpload, paste JSON, or load examples with auto-validation.")
+        if st.button("📤 Import JSON →", use_container_width=True):
+            st.switch_page("pages/2_📤_Import_JSON.py")
+    
+    with col3:
+        st.markdown("### 🔄 Convert & Visualize\n**View results**\n\nSee graphs, algorithm traces, and comparisons.")
+        if st.button("🔄 Convert & Visualize →", use_container_width=True):
+            st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+    
+    st.markdown("---")
+    st.header("✨ Features")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("- ✅ Subset Construction Algorithm\n- ✅ Multiple Input Methods\n- ✅ Visual Graphs\n- ✅ Detailed Logging\n- ✅ Auto Validation")
+    with col2:
+        st.markdown("- ✅ Side-by-Side Comparison\n- ✅ Export Results\n- ✅ State Metrics\n- ✅ Interactive UI\n- ✅ Examples Included")
+    
+    st.markdown("---")
+    st.header("📖 Example NFA")
+    st.markdown("Simple NFA accepting strings with ≥1 'a' followed by ≥1 'b':")
+    
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.json({"states": ["q0", "q1", "q2"], "alphabet": ["a", "b"], "start_state": "q0", "final_states": ["q2"],
+                 "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]}, "q1": {"b": ["q2"]}, 
+                                "q2": {"a": ["q2"], "b": ["q2"]}}})
+    with col2:
+        st.markdown("**Accepts:** `aab`, `aaabbb`, `baaab`\n**Rejects:** `aaa`, `bbb`, `ab`\n\n3 states, non-deterministic at q0. Copy this JSON to Import page!")
+    
+    st.markdown("---")
+    st.header("🧮 Subset Construction Algorithm")
+    with st.expander("📚 How It Works"):
+        st.markdown("1. **Initialize** with NFA start state\n2. **Process** each DFA state (set of NFA states)\n3. **Compute** reachable states for each symbol\n4. **Mark** final states containing NFA final states\n\n**Complexity:** O(2^n) worst case")
+    
+    st.markdown("---")
+    st.markdown("""<div style='text-align: center; color: #666; padding: 2rem 0;'>
+    <p><strong>NFA → DFA Visualizer v3.0</strong> • Built with Streamlit<br>
+    💡 Tip: NFAs can have multiple transitions per input, DFAs have exactly one</p>
+    </div>""", unsafe_allow_html=True)
+    
+    with st.sidebar:
+        st.header("📋 Navigation")
+        for emoji, name, page in [("📝", "Manual Builder", "pages/1_📝_Manual_Builder.py"),
+                                   ("📤", "Import JSON", "pages/2_📤_Import_JSON.py"),
+                                   ("🔄", "Convert & Visualize", "pages/3_🔄_Convert_NFA_DFA.py"),
+                                   ("ℹ️", "About & Help", "pages/4_ℹ️_About.py")]:
+            if st.button(f"{emoji} {name}", use_container_width=True):
+                st.switch_page(page)
+        
+        st.markdown("---")
+        if 'nfa_data' in st.session_state:
+            st.success("✅ NFA Loaded")
+            nfa = st.session_state['nfa_data']
+            st.metric("States", len(nfa.get('states', [])))
+            st.metric("Alphabet Size", len(nfa.get('alphabet', [])))
+            if st.button("🗑️ Clear NFA", use_container_width=True):
+                for key in ['nfa_data', 'dfa_data', 'conversion_logs']:
+                    st.session_state.pop(key, None)
+                st.rerun()
+        else:
+            st.info("ℹ️ No NFA loaded yet")
+
+if __name__ == "__main__":
+    main()
+
+"""NFA to DFA conversion using subset construction algorithm."""
+from typing import Dict, List, Tuple, Set, FrozenSet
+
+def convert_nfa_to_dfa(nfa_data: dict) -> Tuple[dict, List[str]]:
+    """Convert NFA to DFA using subset construction.
+    Args: nfa_data dict with states, alphabet, start_state, final_states, transitions
+    Returns: Tuple of (dfa_data dict, log_lines list)
+    """
+    logs = []
+    try:
+        states, alphabet = nfa_data["states"], nfa_data["alphabet"]
+        start_state, final_states = nfa_data["start_state"], nfa_data["final_states"]
+        transitions = nfa_data["transitions"]
+    except KeyError as e:
+        raise ValueError(f"Invalid NFA data: missing key {e}")
+    
+    logs.extend(["=" * 60, "NFA TO DFA CONVERSION - SUBSET CONSTRUCTION ALGORITHM", "=" * 60, "",
+                 f"Input NFA: {len(states)} states {states}, Alphabet: {alphabet}",
+                 f"Start: {start_state}, Final: {final_states}", ""])
+    
+    dfa_states, dfa_transitions, dfa_final_states, queue = {}, {}, [], []
+    
+    def get_dfa_state_name(nfa_set: FrozenSet[str]) -> str:
+        if nfa_set in dfa_states:
+            return dfa_states[nfa_set]
+        dfa_name = "∅" if not nfa_set else "{" + ",".join(sorted(nfa_set)) + "}"
+        dfa_states[nfa_set] = dfa_name
+        logs.append(f"  → Created DFA state: {dfa_name}")
+        return dfa_name
+    
+    def compute_transition(nfa_set: FrozenSet[str], symbol: str) -> FrozenSet[str]:
+        result = set()
+        for state in nfa_set:
+            if state in transitions and symbol in transitions[state]:
+                result.update(transitions[state][symbol])
+        return frozenset(result)
+    
+    initial_set = frozenset([start_state])
+    queue.append(initial_set)
+    initial_dfa = get_dfa_state_name(initial_set)
+    logs.extend(["STEP 1: Initialize DFA", f"  Initial DFA state: {initial_dfa}", ""])
+    
+    step = 2
+    while queue:
+        current_nfa_set = queue.pop(0)
+        current_dfa = get_dfa_state_name(current_nfa_set)
+        logs.extend([f"STEP {step}: Processing {current_dfa}", f"  (NFA states: {sorted(current_nfa_set)})"])
+        dfa_transitions.setdefault(current_dfa, {})
+        
+        for symbol in alphabet:
+            next_nfa_set = compute_transition(current_nfa_set, symbol)
+            is_new = next_nfa_set not in dfa_states
+            next_dfa = get_dfa_state_name(next_nfa_set)
+            dfa_transitions[current_dfa][symbol] = next_dfa
+            logs.append(f"  On '{symbol}': {current_dfa} → {next_dfa}")
+            if is_new:
+                queue.append(next_nfa_set)
+                logs.append(f"    (New state, queued)")
+        logs.append("")
+        step += 1
+    
+    logs.extend([f"STEP {step}: Determine final states", f"  NFA final: {final_states}"])
+    for nfa_set, dfa_name in dfa_states.items():
+        if any(f in nfa_set for f in final_states):
+            dfa_final_states.append(dfa_name)
+            logs.append(f"  {dfa_name} is final (contains {[s for s in nfa_set if s in final_states]})")
+    
+    logs.extend(["", "=" * 60, "CONVERSION COMPLETE", "=" * 60,
+                 f"DFA: {len(dfa_states)} states {list(dfa_states.values())}",
+                 f"DFA final states: {dfa_final_states}", ""])
+    
+    return {"states": list(dfa_states.values()), "alphabet": alphabet,
+            "start_state": get_dfa_state_name(frozenset([start_state])),
+            "final_states": dfa_final_states, "transitions": dfa_transitions}, logs
+
+
+def validate_nfa(nfa_data: dict) -> Tuple[bool, str]:
+    """Validate NFA data structure.
+    Args: nfa_data dict
+    Returns: Tuple of (is_valid, error_message)
+    """
+    required = ["states", "alphabet", "start_state", "final_states", "transitions"]
+    for key in required:
+        if key not in nfa_data:
+            return False, f"Missing required key: {key}"
+    
+    states, alphabet = nfa_data["states"], nfa_data["alphabet"]
+    start, finals, trans = nfa_data["start_state"], nfa_data["final_states"], nfa_data["transitions"]
+    
+    checks = [(states, list, "'states' must be a list"),
+              (alphabet, list, "'alphabet' must be a list"),
+              (start, str, "'start_state' must be a string"),
+              (finals, list, "'final_states' must be a list"),
+              (trans, dict, "'transitions' must be a dictionary")]
+    
+    for value, expected, msg in checks:
+        if not isinstance(value, expected):
+            return False, msg
+    
+    if start not in states:
+        return False, f"Start state '{start}' not in states list"
+    
+    for f in finals:
+        if f not in states:
+            return False, f"Final state '{f}' not in states list"
+    
+    for state, trans_dict in trans.items():
+        if state not in states:
+            return False, f"Transition source '{state}' not in states list"
+        if not isinstance(trans_dict, dict):
+            return False, f"Transitions for '{state}' must be a dictionary"
+        
+        for symbol, dests in trans_dict.items():
+            if symbol not in alphabet:
+                return False, f"Symbol '{symbol}' not in alphabet"
+            if not isinstance(dests, list):
+                return False, f"Destinations for '{state}' on '{symbol}' must be a list"
+            for dest in dests:
+                if dest not in states:
+                    return False, f"Destination '{dest}' not in states list"
+    
+    return True, "Valid NFA"
+
+"""Graph visualization for NFAs and DFAs using Graphviz."""
+from typing import Dict, List
+import graphviz
+
+def _add_automaton_to_subgraph(cluster: graphviz.Digraph, automaton_data: dict, prefix: str = "") -> None:
+    """Add automaton states and transitions to subgraph."""
+    states, start, finals = automaton_data["states"], automaton_data["start_state"], automaton_data["final_states"]
+    transitions = automaton_data["transitions"]
+    
+    cluster.node(f'{prefix}start', shape='none', width='0', height='0')
+    cluster.edge(f'{prefix}start', f'{prefix}{start}', label='start')
+    
+    for state in states:
+        cluster.node(f'{prefix}{state}', label=state, shape='doublecircle' if state in finals else 'circle')
+    
+    edge_labels: Dict[tuple, List[str]] = {}
+    for src, trans_map in transitions.items():
+        for symbol, dests in trans_map.items():
+            for dest in (dests if isinstance(dests, list) else [dests]):
+                edge_labels.setdefault((f'{prefix}{src}', f'{prefix}{dest}'), []).append(symbol)
+    
+    for (src, dest), symbols in edge_labels.items():
+        cluster.edge(src, dest, label=', '.join(sorted(symbols)))
+
+def create_nfa_graph(nfa_data: dict, title: str = "NFA") -> graphviz.Digraph:
+    """Create Graphviz directed graph of NFA/DFA."""
+    graph = graphviz.Digraph(name=title, comment=title)
+    graph.attr(rankdir='LR', node_shape='circle')
+    _add_automaton_to_subgraph(graph, nfa_data)
+    return graph
+
+def create_dfa_graph(dfa_data: dict, title: str = "DFA") -> graphviz.Digraph:
+    """Create Graphviz directed graph of DFA."""
+    return create_nfa_graph(dfa_data, title)
+
+def render_automaton_graph(automaton_data: dict, output_path: str, format: str = 'png', 
+                          title: str = "Automaton", view: bool = False) -> str:
+    """Render automaton graph to file."""
+    graph = create_nfa_graph(automaton_data, title)
+    graph.format = format
+    return graph.render(output_path, view=view, cleanup=True)
+
+def get_graph_svg(automaton_data: dict, title: str = "Automaton") -> str:
+    """Generate SVG string of automaton graph."""
+    return create_nfa_graph(automaton_data, title).pipe(format='svg').decode('utf-8')
+
+def compare_graphs(nfa_data: dict, dfa_data: dict) -> graphviz.Digraph:
+    """Create side-by-side comparison of NFA and DFA."""
+    main = graphviz.Digraph(name='Comparison')
+    main.attr(rankdir='LR', label='NFA → DFA Conversion', fontsize='20')
+    
+    with main.subgraph(name='cluster_nfa') as nfa:
+        nfa.attr(label='NFA', fontsize='16', style='rounded', color='blue')
+        _add_automaton_to_subgraph(nfa, nfa_data, prefix='nfa_')
+    
+    with main.subgraph(name='cluster_dfa') as dfa:
+        dfa.attr(label='DFA', fontsize='16', style='rounded', color='green')
+        _add_automaton_to_subgraph(dfa, dfa_data, prefix='dfa_')
+    
+    return main
+
+streamlit
+pytest
+graphviz
+
+"""Manual NFA Builder Page"""
+import streamlit as st
+import json
+from nfa_to_dfa import validate_nfa
+
+st.set_page_config(page_title="Manual NFA Builder", page_icon="📝", layout="wide")
+
+def main():
+    st.title("📝 Manual NFA Builder")
+    st.markdown("Build your NFA step-by-step. All inputs are validated before saving.")
+    
+    if 'transitions_data' not in st.session_state:
+        st.session_state.transitions_data = {}
+    
+    with st.form("nfa_builder_form", clear_on_submit=False):
+        st.subheader("🎯 Step 1: Define States")
+        col1, col2 = st.columns(2)
+        with col1:
+            states_input = st.text_input("States (comma-separated)", value="q0, q1, q2",
+                                        help="Example: q0, q1, q2")
+        with col2:
+            alphabet_input = st.text_input("Alphabet (comma-separated)", value="a, b",
+                                          help="Example: a, b, 0, 1")
+        
+        states = [s.strip() for s in states_input.split(',') if s.strip()]
+        alphabet = [s.strip() for s in alphabet_input.split(',') if s.strip()]
+        
+        st.markdown("---")
+        st.subheader("🏁 Step 2: Select Start and Final States")
+        col1, col2 = st.columns(2)
+        with col1:
+            start_state = st.selectbox("Start State", options=states, help="Initial state") if states else None
+            if not states:
+                st.warning("⚠️ Define states first")
+        with col2:
+            final_states = st.multiselect("Final States", options=states, 
+                                         default=[states[-1]] if states else [],
+                                         help="Accepting states") if states else []
+            if not states:
+                st.warning("⚠️ Define states first")
+        
+        st.markdown("---")
+        st.subheader("🔀 Step 3: Define Transitions")
+        st.markdown("Specify destination states (comma-separated) for non-deterministic behavior.")
+        
+        transitions = {}
+        if states and alphabet:
+            for state in states:
+                st.markdown(f"**From State: `{state}`**")
+                transitions[state] = {}
+                cols = st.columns(len(alphabet))
+                for idx, symbol in enumerate(alphabet):
+                    with cols[idx]:
+                        prev = ""
+                        if state in st.session_state.transitions_data:
+                            if symbol in st.session_state.transitions_data[state]:
+                                prev = ", ".join(st.session_state.transitions_data[state][symbol])
+                        
+                        dest_input = st.text_input(f"On '{symbol}'", value=prev, key=f"trans_{state}_{symbol}",
+                                                   help=f"Destinations from '{state}' on '{symbol}'",
+                                                   placeholder="q1, q2")
+                        if dest_input.strip():
+                            transitions[state][symbol] = [s.strip() for s in dest_input.split(',') if s.strip()]
+                st.markdown("")
+        else:
+            st.warning("⚠️ Define states and alphabet first")
+        
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col1:
+            submit = st.form_submit_button("✅ Build NFA", type="primary", use_container_width=True)
+        with col2:
+            preview = st.form_submit_button("👁️ Preview JSON", use_container_width=True)
+        with col3:
+            clear = st.form_submit_button("🗑️ Clear Form", use_container_width=True)
+    
+    if clear:
+        st.session_state.transitions_data = {}
+        st.session_state.pop('nfa_data', None)
+        st.rerun()
+    
+    if submit or preview:
+        st.session_state.transitions_data = transitions
+        nfa_data = {"states": states, "alphabet": alphabet, "start_state": start_state,
+                    "final_states": final_states, "transitions": transitions}
+        is_valid, msg = validate_nfa(nfa_data)
+        
+        if is_valid:
+            st.success(f"✅ {msg}")
+            if submit:
+                st.session_state['nfa_data'] = nfa_data
+                st.balloons()
+                st.success("🎉 NFA built! Redirecting...")
+                st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+            if preview:
+                st.markdown("---")
+                st.subheader("👁️ JSON Preview")
+                st.json(nfa_data)
+        else:
+            st.error(f"❌ Invalid NFA: {msg}")
+            st.info("💡 Fix errors and try again.")
+    
+    if 'nfa_data' in st.session_state and not submit:
+        st.markdown("---")
+        st.info("ℹ️ An NFA is loaded. Submit to overwrite.")
+    
+    with st.sidebar:
+        st.header("📖 Quick Guide")
+        st.markdown("""### How to Build
+1. **States**: q0, q1, q2
+2. **Alphabet**: a, b
+3. **Start State**: Choose initial
+4. **Final States**: Choose accepting
+5. **Transitions**: Specify destinations
+6. **Build**: Validate and save
+
+For non-deterministic transitions, use multiple states (comma-separated).
+
+### Example
+**States**: q0, q1, q2  
+**Alphabet**: a, b  
+**Start**: q0, **Final**: q2  
+**Transitions**:  
+- q0 on 'a' → q0, q1  
+- q0 on 'b' → q0  
+- q1 on 'b' → q2  
+- q2 on 'a' → q2  
+- q2 on 'b' → q2""")
+
+if __name__ == "__main__":
+    main()
+
+"""Import JSON Page"""
+import streamlit as st
+import json
+from nfa_to_dfa import validate_nfa
+
+st.set_page_config(page_title="Import NFA JSON", page_icon="📤", layout="wide")
+
+def load_json_from_text(text: str):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        return None, f"JSON parsing error: {e}"
+
+def main():
+    st.title("📤 Import NFA JSON")
+    st.markdown("Import your NFA by uploading, pasting, or loading an example.")
+    
+    tab1, tab2, tab3 = st.tabs(["📁 Upload File", "📋 Paste JSON", "📚 Load Example"])
+    
+    nfa_data, source = None, None
+    
+    with tab1:
+        uploaded = st.file_uploader("Choose a JSON file", type=["json"], help="Select a .json file")
+        if uploaded:
+            try:
+                nfa_data = json.load(uploaded)
+                source = f"File: {uploaded.name}"
+                st.success(f"✅ Loaded: {uploaded.name}")
+            except json.JSONDecodeError as e:
+                st.error(f"❌ Invalid JSON: {e}")
+    
+    with tab2:
+        json_text = st.text_area("Paste NFA JSON", height=400, 
+                                placeholder='{"states": ["q0"], "alphabet": ["a"], ...}')
+        if json_text.strip():
+            result = load_json_from_text(json_text)
+            if isinstance(result, tuple):
+                _, error_msg = result
+                st.error(f"❌ {error_msg}")
+            else:
+                nfa_data = result
+                source = "Pasted JSON"
+                st.success("✅ Parsed successfully")
+    
+    with tab3:
+        examples = {
+            "Simple NFA (a*b+)": {"states": ["q0", "q1", "q2"], "alphabet": ["a", "b"], "start_state": "q0",
+                                  "final_states": ["q2"], "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]},
+                                                                          "q1": {"b": ["q2"]}, "q2": {"a": ["q2"], "b": ["q2"]}}},
+            "Binary Ending with 01": {"states": ["q0", "q1", "q2"], "alphabet": ["0", "1"], "start_state": "q0",
+                                     "final_states": ["q2"], "transitions": {"q0": {"0": ["q0", "q1"], "1": ["q0"]},
+                                                                            "q1": {"1": ["q2"]}, "q2": {"0": ["q1"], "1": ["q0"]}}},
+            "Contains 'aba'": {"states": ["q0", "q1", "q2", "q3"], "alphabet": ["a", "b"], "start_state": "q0",
+                             "final_states": ["q3"], "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]},
+                                                                     "q1": {"b": ["q2"]}, "q2": {"a": ["q3"]},
+                                                                     "q3": {"a": ["q3"], "b": ["q3"]}}}
+        }
+        selected = st.selectbox("Choose example", list(examples.keys()))
+        if st.button("📥 Load Example", type="primary"):
+            nfa_data = examples[selected]
+            source = f"Example: {selected}"
+            st.success(f"✅ Loaded: {selected}")
+    
+    if nfa_data:
+        st.markdown("---")
+        st.header("📋 NFA Preview")
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.json(nfa_data)
+        with col2:
+            st.metric("States", len(nfa_data.get('states', [])))
+            st.metric("Alphabet", len(nfa_data.get('alphabet', [])))
+            st.metric("Final States", len(nfa_data.get('final_states', [])))
+        
+        st.markdown("---")
+        is_valid, msg = validate_nfa(nfa_data)
+        
+        if is_valid:
+            st.success(f"✅ {msg}")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("💾 Save & Convert →", type="primary", use_container_width=True):
+                    st.session_state['nfa_data'] = nfa_data
+                    st.balloons()
+                    st.success(f"🎉 Saved from: {source}! Redirecting...")
+                    st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
+            with col2:
+                if st.button("🏠 Home", use_container_width=True):
+                    st.switch_page("main.py")
+        else:
+            st.error(f"❌ Invalid NFA: {msg}")
+    
+    if 'nfa_data' in st.session_state:
+        st.markdown("---")
+        st.info("ℹ️ NFA loaded. Load new one to replace.")
+        if st.button("🗑️ Clear Loaded NFA", use_container_width=True):
+            for key in ['nfa_data', 'dfa_data', 'conversion_logs']:
+                st.session_state.pop(key, None)
+            st.rerun()
+    
+    with st.sidebar:
+        st.header("📖 JSON Format")
+        st.markdown("""### Required Fields
+- `states`: Array of names
+- `alphabet`: Array of symbols
+- `start_state`: Initial state
+- `final_states`: Accepting states
+- `transitions`: State→Symbol→Destinations
+
+### Example
+```json
+{
+  "states": ["q0", "q1"],
+  "alphabet": ["a", "b"],
+  "start_state": "q0",
+  "final_states": ["q1"],
+  "transitions": {
+    "q0": {
+      "a": ["q0", "q1"],
+      "b": ["q0"]
+    }
+  }
+}
+```
+Destinations must be arrays. Missing transitions = ∅.""")
+
+if __name__ == "__main__":
+    main()
+
+"""About and Help Page"""
+import streamlit as st
+
+st.set_page_config(page_title="About & Help", page_icon="ℹ️", layout="wide")
+
+def main():
+    st.title("ℹ️ About & Help")
+    st.markdown("Documentation and examples for the NFA to DFA Visualizer.")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📚 Documentation", "💡 Examples", "❓ FAQ", "🔧 Technical"])
+    
+    with tab1:
+        st.header("📚 Documentation")
+        st.markdown("""## What is this tool?
+The **NFA to DFA Visualizer** converts **Non-deterministic Finite Automata (NFA)** to **Deterministic Finite Automata (DFA)** using **Subset Construction**.
+
+### Features
+✅ Multiple Input Methods | ✅ Visual Graphs | ✅ Step-by-Step Logs | ✅ Auto Validation | ✅ Export Results | ✅ Comparison Views
+
+### How to Use
+**Method 1: Manual Builder** - Enter states, alphabet, select start/final, define transitions  
+**Method 2: Import JSON** - Upload/paste JSON or load examples  
+**Method 3: Direct** - Load NFA → Convert & Visualize
+
+### NFA vs DFA
+| Feature | NFA | DFA |
+|---------|-----|-----|
+| **Transitions** | Multiple per state-symbol | Exactly one per state-symbol |
+| **Acceptance** | ANY path to final | THE path to final |
+| **States** | Usually fewer | Can be 2^n (worst case) |
+| **Computation** | Slower (track multiple) | Faster (single state) |
+| **Design** | Easier | Harder |""")
+    
+    with tab2:
+        st.header("💡 Examples")
+        examples = [
+            ("Strings Containing 'aba'", 
+             {"states": ["q0", "q1", "q2", "q3"], "alphabet": ["a", "b"], "start_state": "q0",
+              "final_states": ["q3"], "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]},
+                                                      "q1": {"b": ["q2"]}, "q2": {"a": ["q3"]},
+                                                      "q3": {"a": ["q3"], "b": ["q3"]}}},
+             "Accepts: `aba`, `aaba`, `abababa` | Rejects: `ab`, `aab`, `bbb`"),
+            ("Binary Ending with '01'",
+             {"states": ["q0", "q1", "q2"], "alphabet": ["0", "1"], "start_state": "q0",
+              "final_states": ["q2"], "transitions": {"q0": {"0": ["q0", "q1"], "1": ["q0"]},
+                                                      "q1": {"1": ["q2"]}, "q2": {"0": ["q1"], "1": ["q0"]}}},
+             "Accepts: `01`, `101`, `1001` | Rejects: `0`, `10`, `111`"),
+            ("At least 1 'a' then 1 'b'",
+             {"states": ["q0", "q1", "q2"], "alphabet": ["a", "b"], "start_state": "q0",
+              "final_states": ["q2"], "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]},
+                                                      "q1": {"b": ["q2"]}, "q2": {"a": ["q2"], "b": ["q2"]}}},
+             "Accepts: `aab`, `aaabbb` | Rejects: `aaa`, `bbb`, `ab`")
+        ]
+        
+        for title, nfa, desc in examples:
+            st.markdown(f"### {title}")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.json(nfa)
+            with col2:
+                st.markdown(f"**Description:** {desc}\n\nNon-deterministic at state q0")
+            st.markdown("---")
+    
+    with tab3:
+        st.header("❓ FAQ")
+        faqs = [
+            ("What's the difference between NFA and DFA?",
+             "**NFA:** Multiple transitions per state-symbol, epsilon transitions. **DFA:** Exactly one transition per state-symbol, no epsilon."),
+            ("What is Subset Construction?",
+             "Algorithm converting NFA to DFA by creating DFA states from sets of NFA states. **Complexity:** O(2^n × |Σ|)"),
+            ("Why more DFA states than NFA?",
+             "**State explosion** is normal. Each DFA state = set of NFA states. Worst case: 2^n states."),
+            ("Can I convert DFA to NFA?",
+             "Yes! Every DFA is already a valid NFA (special case). No conversion needed."),
+            ("Does this support epsilon (ε) transitions?",
+             "Currently **no**. Focus is on NFAs without epsilon transitions."),
+            ("What if transitions are missing?",
+             "Missing transitions = implicit dead state (∅). Algorithm handles automatically."),
+            ("How to download NFA/DFA?",
+             "**NFA:** Manual Builder → Download JSON. **DFA:** Convert page → Download DFA JSON."),
+            ("Why no graph?",
+             "Install **Graphviz**: https://graphviz.org/download/ and add to PATH.")
+        ]
+        for q, a in faqs:
+            with st.expander(f"❓ {q}"):
+                st.markdown(a)
+    
+    with tab4:
+        st.header("🔧 Technical")
+        st.markdown("""### Technology Stack
+**Frontend:** Streamlit | **Backend:** Python 3.8+ | **Viz:** Graphviz | **Algorithm:** Subset Construction
+
+### JSON Format
+```json
+{
+  "states": ["q0", "q1"],
+  "alphabet": ["a", "b"],
+  "start_state": "q0",
+  "final_states": ["q1"],
+  "transitions": {
+    "q0": {"a": ["q0", "q1"], "b": ["q0"]}
+  }
+}
+```
+
+### Validation Rules
+1. All fields required: `states`, `alphabet`, `start_state`, `final_states`, `transitions`
+2. `states` and `alphabet` must be non-empty arrays
+3. `start_state` must be in `states`
+4. All `final_states` must be in `states`
+5. Transition keys must be in `states`
+6. Transition symbols must be in `alphabet`
+7. Destination states must be arrays and in `states`
+
+### Algorithm Pseudocode
+```
+SubsetConstruction(NFA):
+  DFA_states = {}, queue = [{NFA.start}]
+  while queue not empty:
+    current = queue.pop()
+    for symbol in alphabet:
+      next = compute_reachable(current, symbol)
+      if next not in DFA_states:
+        DFA_states.add(next), queue.add(next)
+      DFA.transitions[current][symbol] = next
+  for state in DFA_states:
+    if contains_NFA_final(state):
+      DFA.final.add(state)
+```
+
+### Performance
+**Best:** O(n) | **Average:** O(n log n) | **Worst:** O(2^n)
+
+### Version: v3.0 - Multi-page, form-based builder, comprehensive testing""")
+    
+    st.markdown("---")
+    st.markdown("<div style='text-align: center; color: #666;'><p><strong>NFA → DFA Visualizer v3.0</strong><br>Built with ❤️ using Streamlit</p></div>", unsafe_allow_html=True)
+    
+    with st.sidebar:
+        st.header("🔗 Quick Links")
+        for emoji, name, page in [("🏠", "Home", "main.py"),
+                                   ("📝", "Manual Builder", "pages/1_📝_Manual_Builder.py"),
+                                   ("📤", "Import JSON", "pages/2_📤_Import_JSON.py"),
+                                   ("🔄", "Convert & Visualize", "pages/3_�_Convert_NFA_DFA.py")]:
+            if st.button(f"{emoji} {name}", use_container_width=True):
+                st.switch_page(page)
+        
+        st.markdown("---")
+        st.header("📚 Resources")
+        st.markdown("- [Automata Theory](https://en.wikipedia.org/wiki/Automata_theory)\n- [Subset Construction](https://en.wikipedia.org/wiki/Powerset_construction)\n- [Graphviz](https://graphviz.org/)\n- [Streamlit](https://docs.streamlit.io/)")
+
+if __name__ == "__main__":
+    main()
+
