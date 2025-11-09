@@ -4,8 +4,48 @@ This module provides functions to generate visual representations of finite auto
 as directed graphs using the Graphviz library.
 """
 
-from typing import Dict, List, Union
+from typing import Dict, List
 import graphviz
+
+
+def _add_automaton_to_subgraph(
+    cluster: graphviz.Digraph,
+    automaton_data: dict,
+    prefix: str = ""
+) -> None:
+    """Helper function to add automaton states and transitions to a subgraph.
+    
+    Args:
+        cluster: Graphviz subgraph to add nodes/edges to
+        automaton_data: Automaton data dictionary
+        prefix: Prefix for node IDs (e.g., 'nfa_' or 'dfa_')
+    """
+    states = automaton_data["states"]
+    start_state = automaton_data["start_state"]
+    final_states = automaton_data["final_states"]
+    transitions = automaton_data["transitions"]
+    
+    # Add start marker
+    cluster.node(f'{prefix}start', shape='none', width='0', height='0')
+    cluster.edge(f'{prefix}start', f'{prefix}{start_state}', label='start')
+    
+    # Add states
+    for state in states:
+        node_id = f'{prefix}{state}'
+        shape = 'doublecircle' if state in final_states else 'circle'
+        cluster.node(node_id, label=state, shape=shape)
+    
+    # Group and add transitions
+    edge_labels: Dict[tuple, List[str]] = {}
+    for source_state, trans_map in transitions.items():
+        for symbol, dest_states in trans_map.items():
+            dest_list = dest_states if isinstance(dest_states, list) else [dest_states]
+            for dest_state in dest_list:
+                key = (f'{prefix}{source_state}', f'{prefix}{dest_state}')
+                edge_labels.setdefault(key, []).append(symbol)
+    
+    for (source, dest), symbols in edge_labels.items():
+        cluster.edge(source, dest, label=', '.join(sorted(symbols)))
 
 
 def create_nfa_graph(nfa_data: dict, title: str = "NFA") -> graphviz.Digraph:
@@ -17,60 +57,10 @@ def create_nfa_graph(nfa_data: dict, title: str = "NFA") -> graphviz.Digraph:
     
     Returns:
         graphviz.Digraph object that can be rendered
-    
-    Example:
-        >>> nfa = {"states": ["q0", "q1"], ...}
-        >>> graph = create_nfa_graph(nfa)
-        >>> graph.render('nfa_diagram', format='png')
     """
-    # Create directed graph
     graph = graphviz.Digraph(name=title, comment=title)
-    graph.attr(rankdir='LR')  # Left to right layout
-    graph.attr('node', shape='circle')
-    
-    states = nfa_data["states"]
-    start_state = nfa_data["start_state"]
-    final_states = nfa_data["final_states"]
-    transitions = nfa_data["transitions"]
-    
-    # Add invisible start node for initial arrow
-    graph.node('', shape='none', width='0', height='0')
-    graph.edge('', start_state, label='start')
-    
-    # Add all states
-    for state in states:
-        if state in final_states:
-            # Final states have double circle
-            graph.node(state, shape='doublecircle')
-        else:
-            # Regular states
-            graph.node(state, shape='circle')
-    
-    # Add transitions
-    # Group transitions by (source, dest) to combine labels
-    edge_labels: Dict[tuple, List[str]] = {}
-    
-    for source_state, trans_map in transitions.items():
-        for symbol, dest_states in trans_map.items():
-            # NFA: dest_states is a list
-            if isinstance(dest_states, list):
-                for dest_state in dest_states:
-                    key = (source_state, dest_state)
-                    if key not in edge_labels:
-                        edge_labels[key] = []
-                    edge_labels[key].append(symbol)
-            # DFA: dest_states is a string
-            else:
-                key = (source_state, dest_states)
-                if key not in edge_labels:
-                    edge_labels[key] = []
-                edge_labels[key].append(symbol)
-    
-    # Add edges with combined labels
-    for (source, dest), symbols in edge_labels.items():
-        label = ', '.join(sorted(symbols))
-        graph.edge(source, dest, label=label)
-    
+    graph.attr(rankdir='LR', node_shape='circle')
+    _add_automaton_to_subgraph(graph, nfa_data)
     return graph
 
 
@@ -83,14 +73,7 @@ def create_dfa_graph(dfa_data: dict, title: str = "DFA") -> graphviz.Digraph:
     
     Returns:
         graphviz.Digraph object that can be rendered
-    
-    Example:
-        >>> dfa = {"states": ["{q0}", "{q0,q1}"], ...}
-        >>> graph = create_dfa_graph(dfa)
-        >>> graph.render('dfa_diagram', format='png')
     """
-    # DFA graph creation is the same as NFA
-    # The difference is in the data structure (single vs multiple destinations)
     return create_nfa_graph(dfa_data, title)
 
 
@@ -112,23 +95,14 @@ def render_automaton_graph(
     
     Returns:
         Path to the rendered file
-    
-    Example:
-        >>> nfa = load_nfa("example.json")
-        >>> render_automaton_graph(nfa, "output/my_nfa", format='svg')
-        'output/my_nfa.svg'
     """
     graph = create_nfa_graph(automaton_data, title)
     graph.format = format
-    rendered_path = graph.render(output_path, view=view, cleanup=True)
-    return rendered_path
+    return graph.render(output_path, view=view, cleanup=True)
 
 
 def get_graph_svg(automaton_data: dict, title: str = "Automaton") -> str:
     """Generate SVG string representation of an automaton graph.
-    
-    This is useful for displaying graphs in web interfaces without
-    saving to disk.
     
     Args:
         automaton_data: NFA or DFA data dictionary
@@ -136,15 +110,9 @@ def get_graph_svg(automaton_data: dict, title: str = "Automaton") -> str:
     
     Returns:
         SVG string that can be embedded in HTML
-    
-    Example:
-        >>> nfa = {"states": ["q0", "q1"], ...}
-        >>> svg_string = get_graph_svg(nfa, "My NFA")
-        >>> # Use in Streamlit: st.image(svg_string)
     """
     graph = create_nfa_graph(automaton_data, title)
-    svg_bytes = graph.pipe(format='svg')
-    return svg_bytes.decode('utf-8')
+    return graph.pipe(format='svg').decode('utf-8')
 
 
 def compare_graphs(nfa_data: dict, dfa_data: dict) -> graphviz.Digraph:
@@ -157,86 +125,17 @@ def compare_graphs(nfa_data: dict, dfa_data: dict) -> graphviz.Digraph:
     Returns:
         Combined graph showing both automata
     """
-    # Create a parent graph with subgraphs
     main_graph = graphviz.Digraph(name='Comparison')
-    main_graph.attr(rankdir='LR')
-    main_graph.attr(label='NFA → DFA Conversion', fontsize='20')
+    main_graph.attr(rankdir='LR', label='NFA → DFA Conversion', fontsize='20')
     
-    # Create NFA subgraph
+    # NFA subgraph
     with main_graph.subgraph(name='cluster_nfa') as nfa_cluster:
-        nfa_cluster.attr(label='NFA', fontsize='16')
-        nfa_cluster.attr(style='rounded', color='blue')
-        
-        states = nfa_data["states"]
-        start_state = nfa_data["start_state"]
-        final_states = nfa_data["final_states"]
-        transitions = nfa_data["transitions"]
-        
-        # Add NFA start marker
-        nfa_cluster.node('nfa_start', shape='none', width='0', height='0')
-        nfa_cluster.edge('nfa_start', f'nfa_{start_state}', label='start')
-        
-        # Add NFA states
-        for state in states:
-            node_id = f'nfa_{state}'
-            if state in final_states:
-                nfa_cluster.node(node_id, label=state, shape='doublecircle')
-            else:
-                nfa_cluster.node(node_id, label=state, shape='circle')
-        
-        # Add NFA transitions
-        edge_labels: Dict[tuple, List[str]] = {}
-        for source_state, trans_map in transitions.items():
-            for symbol, dest_states in trans_map.items():
-                if isinstance(dest_states, list):
-                    for dest_state in dest_states:
-                        key = (f'nfa_{source_state}', f'nfa_{dest_state}')
-                        if key not in edge_labels:
-                            edge_labels[key] = []
-                        edge_labels[key].append(symbol)
-                else:
-                    key = (f'nfa_{source_state}', f'nfa_{dest_states}')
-                    if key not in edge_labels:
-                        edge_labels[key] = []
-                    edge_labels[key].append(symbol)
-        
-        for (source, dest), symbols in edge_labels.items():
-            label = ', '.join(sorted(symbols))
-            nfa_cluster.edge(source, dest, label=label)
+        nfa_cluster.attr(label='NFA', fontsize='16', style='rounded', color='blue')
+        _add_automaton_to_subgraph(nfa_cluster, nfa_data, prefix='nfa_')
     
-    # Create DFA subgraph
+    # DFA subgraph
     with main_graph.subgraph(name='cluster_dfa') as dfa_cluster:
-        dfa_cluster.attr(label='DFA', fontsize='16')
-        dfa_cluster.attr(style='rounded', color='green')
-        
-        states = dfa_data["states"]
-        start_state = dfa_data["start_state"]
-        final_states = dfa_data["final_states"]
-        transitions = dfa_data["transitions"]
-        
-        # Add DFA start marker
-        dfa_cluster.node('dfa_start', shape='none', width='0', height='0')
-        dfa_cluster.edge('dfa_start', f'dfa_{start_state}', label='start')
-        
-        # Add DFA states
-        for state in states:
-            node_id = f'dfa_{state}'
-            if state in final_states:
-                dfa_cluster.node(node_id, label=state, shape='doublecircle')
-            else:
-                dfa_cluster.node(node_id, label=state, shape='circle')
-        
-        # Add DFA transitions
-        edge_labels: Dict[tuple, List[str]] = {}
-        for source_state, trans_map in transitions.items():
-            for symbol, dest_state in trans_map.items():
-                key = (f'dfa_{source_state}', f'dfa_{dest_state}')
-                if key not in edge_labels:
-                    edge_labels[key] = []
-                edge_labels[key].append(symbol)
-        
-        for (source, dest), symbols in edge_labels.items():
-            label = ', '.join(sorted(symbols))
-            dfa_cluster.edge(source, dest, label=label)
+        dfa_cluster.attr(label='DFA', fontsize='16', style='rounded', color='green')
+        _add_automaton_to_subgraph(dfa_cluster, dfa_data, prefix='dfa_')
     
     return main_graph
