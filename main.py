@@ -11,7 +11,7 @@ def main():
     </div>""", unsafe_allow_html=True)
     
     st.header("🚀 Quick Start")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("### 📝 Manual Builder\n**Best for learning**\n\nBuild NFAs step-by-step with interactive forms and visual preview.")
@@ -19,11 +19,6 @@ def main():
             st.switch_page("pages/1_📝_Manual_Builder.py")
     
     with col2:
-        st.markdown("### 📤 Import JSON\n**Best for existing NFAs**\n\nUpload, paste JSON, or load examples with auto-validation.")
-        if st.button("📤 Import JSON →", use_container_width=True):
-            st.switch_page("pages/2_📤_Import_JSON.py")
-    
-    with col3:
         st.markdown("### 🔄 Convert & Visualize\n**View results**\n\nSee graphs, algorithm traces, and comparisons.")
         if st.button("🔄 Convert & Visualize →", use_container_width=True):
             st.switch_page("pages/3_🔄_Convert_NFA_DFA.py")
@@ -32,9 +27,9 @@ def main():
     st.header("✨ Features")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("- ✅ Subset Construction Algorithm\n- ✅ Multiple Input Methods\n- ✅ Visual Graphs\n- ✅ Detailed Logging\n- ✅ Auto Validation")
+        st.markdown("- ✅ Subset Construction Algorithm\n- ✅ Manual NFA Builder\n- ✅ Visual Graphs\n- ✅ Detailed Logging\n- ✅ Auto Validation")
     with col2:
-        st.markdown("- ✅ Side-by-Side Comparison\n- ✅ Export Results\n- ✅ State Metrics\n- ✅ Interactive UI\n- ✅ Examples Included")
+        st.markdown("- ✅ Side-by-Side Comparison\n- ✅ Export Results\n- ✅ State Metrics\n- ✅ Interactive UI\n- ✅ Step-by-Step Forms")
     
     st.markdown("---")
     st.header("📖 Example NFA")
@@ -46,7 +41,7 @@ def main():
                  "transitions": {"q0": {"a": ["q0", "q1"], "b": ["q0"]}, "q1": {"b": ["q2"]}, 
                                 "q2": {"a": ["q2"], "b": ["q2"]}}})
     with col2:
-        st.markdown("**Accepts:** `aab`, `aaabbb`, `baaab`\n**Rejects:** `aaa`, `bbb`, `ab`\n\n3 states, non-deterministic at q0. Copy this JSON to Import page!")
+        st.markdown("**Accepts:** `aab`, `aaabbb`, `baaab`\n**Rejects:** `aaa`, `bbb`, `ab`\n\n3 states, non-deterministic at q0. Use Manual Builder to create similar NFAs!")
     
     st.markdown("---")
     st.header("🧮 Subset Construction Algorithm")
@@ -62,8 +57,7 @@ def main():
     with st.sidebar:
         st.header("📋 Navigation")
         for emoji, name, page in [("📝", "Manual Builder", "pages/1_📝_Manual_Builder.py"),
-                                   ("📤", "Import JSON", "pages/2_📤_Import_JSON.py"),
-                                   ("🔄", "Convert & Visualize", "pages/3_🔄_Convert_NFA_DFA.py"),
+                                   ("", "Convert & Visualize", "pages/3_🔄_Convert_NFA_DFA.py"),
                                    ("ℹ️", "About & Help", "pages/4_ℹ️_About.py")]:
             if st.button(f"{emoji} {name}", use_container_width=True):
                 st.switch_page(page)
