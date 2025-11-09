@@ -17,16 +17,10 @@ def main():
     
     if 'nfa_data' not in st.session_state:
         st.warning("⚠️ No NFA loaded yet!")
-        st.info("👈 Create or import an NFA first.")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("### 📝 Manual Builder\nBuild step-by-step")
-            if st.button("Go to Manual Builder →", use_container_width=True):
-                st.switch_page("pages/1_📝_Manual_Builder.py")
-        with col2:
-            st.markdown("### 📤 Import JSON\nUpload or paste")
-            if st.button("Go to Import JSON →", use_container_width=True):
-                st.switch_page("pages/2_📤_Import_JSON.py")
+        st.info("👈 Create an NFA first using the Manual Builder.")
+        st.markdown("### 📝 Manual Builder\nBuild step-by-step")
+        if st.button("Go to Manual Builder →", use_container_width=True, type="primary"):
+            st.switch_page("pages/1_📝_Manual_Builder.py")
         st.stop()
     
     nfa_data = st.session_state['nfa_data']
