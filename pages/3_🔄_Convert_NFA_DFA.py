@@ -1,272 +1,172 @@
-"""Convert NFA to DFA Page
-
-Convert loaded NFAs to DFAs and visualize the results.
-"""
-
+"""Convert NFA to DFA Page"""
 import streamlit as st
 import json
 from nfa_to_dfa import convert_nfa_to_dfa, validate_nfa
 
-# Try to import graph visualization (optional)
 try:
     from graph_visualizer import get_graph_svg, compare_graphs
     GRAPH_AVAILABLE = True
 except ImportError:
     GRAPH_AVAILABLE = False
 
-st.set_page_config(
-    page_title="Convert NFA to DFA",
-    page_icon="🔄",
-    layout="wide"
-)
-
+st.set_page_config(page_title="Convert NFA to DFA", page_icon="🔄", layout="wide")
 
 def main():
-    """Convert and visualize page."""
-    
     st.title("🔄 Convert NFA to DFA")
-    st.markdown("""
-    Transform your NFA into an equivalent DFA using the subset construction algorithm.
-    """)
+    st.markdown("Transform your NFA into an equivalent DFA using subset construction.")
     
-    # Check if NFA is loaded
     if 'nfa_data' not in st.session_state:
         st.warning("⚠️ No NFA loaded yet!")
-        st.info("👈 Please create or import an NFA first.")
-        
+        st.info("👈 Create or import an NFA first.")
         col1, col2 = st.columns(2)
-        
         with col1:
-            st.markdown("### 📝 Manual Builder")
-            st.markdown("Build an NFA step-by-step using forms")
+            st.markdown("### 📝 Manual Builder\nBuild step-by-step")
             if st.button("Go to Manual Builder →", use_container_width=True):
                 st.switch_page("pages/1_📝_Manual_Builder.py")
-        
         with col2:
-            st.markdown("### 📤 Import JSON")
-            st.markdown("Upload or paste an existing NFA")
+            st.markdown("### 📤 Import JSON\nUpload or paste")
             if st.button("Go to Import JSON →", use_container_width=True):
                 st.switch_page("pages/2_📤_Import_JSON.py")
-        
         st.stop()
     
     nfa_data = st.session_state['nfa_data']
     
-    # Display NFA Information
     st.header("📥 Input NFA")
+    tabs = ["📊 Graph", "📋 JSON", "📈 Summary"] if GRAPH_AVAILABLE else ["📋 JSON", "📈 Summary"]
+    tab_objs = st.tabs(tabs)
     
-    # Create tabs for NFA views
     if GRAPH_AVAILABLE:
-        tab1, tab2, tab3 = st.tabs(["📊 Graph", "📋 JSON", "📈 Summary"])
-        
-        with tab1:
+        with tab_objs[0]:
             try:
-                svg_graph = get_graph_svg(nfa_data, "Input NFA")
-                st.image(svg_graph, use_container_width=True)
+                st.image(get_graph_svg(nfa_data, "Input NFA"), use_container_width=True)
             except Exception as e:
-                st.error(f"Failed to generate graph: {e}")
-                st.info("💡 Make sure Graphviz is installed on your system: https://graphviz.org/download/")
+                st.error(f"Failed: {e}")
+                st.info("💡 Install Graphviz: https://graphviz.org/download/")
+        json_tab, summary_tab = tab_objs[1], tab_objs[2]
     else:
-        st.warning("⚠️ Graph visualization not available. Install 'graphviz' package and Graphviz software for visual diagrams.")
-        tab2, tab3 = st.tabs(["📋 JSON", "📈 Summary"])
+        st.warning("⚠️ Graph visualization unavailable. Install 'graphviz'.")
+        json_tab, summary_tab = tab_objs[0], tab_objs[1]
     
-    with tab2:
+    with json_tab:
         st.json(nfa_data)
     
-    with tab3:
+    with summary_tab:
         col1, col2 = st.columns(2)
-        
         with col1:
-            st.metric("States", len(nfa_data["states"]))
-            st.metric("Alphabet Size", len(nfa_data["alphabet"]))
-            st.metric("Final States", len(nfa_data["final_states"]))
-        
+            for label, key in [("States", "states"), ("Alphabet Size", "alphabet"), ("Final States", "final_states")]:
+                st.metric(label, len(nfa_data[key]))
         with col2:
             st.markdown("**States:** " + ", ".join(f"`{s}`" for s in nfa_data["states"]))
-            st.markdown("**Alphabet:** " + ", ".join(f"`{s}`" for s in nfa_data["alphabet"]))
-            st.markdown("**Start State:** " + f"`{nfa_data['start_state']}`")
-            st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in nfa_data["final_states"]))
+            st.markdown(f"**Start:** `{nfa_data['start_state']}`")
+            st.markdown("**Finals:** " + ", ".join(f"`{s}`" for s in nfa_data["final_states"]))
     
     st.markdown("---")
-    
-    # Conversion Controls
     st.header("⚙️ Conversion")
-    
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
         if st.button("🚀 Convert to DFA", type="primary", use_container_width=True):
             try:
-                with st.spinner("⚙️ Running subset construction algorithm..."):
+                with st.spinner("⚙️ Running algorithm..."):
                     dfa, logs = convert_nfa_to_dfa(nfa_data)
-                
-                # Store in session state
-                st.session_state['dfa_data'] = dfa
-                st.session_state['conversion_logs'] = logs
-                st.session_state['converted'] = True
-                
-                st.success("✅ Conversion completed successfully!")
+                st.session_state.update({'dfa_data': dfa, 'conversion_logs': logs, 'converted': True})
+                st.success("✅ Conversion complete!")
                 st.balloons()
-                
             except Exception as e:
-                st.error(f"❌ Conversion failed: {e}")
-                import traceback
-                with st.expander("🐛 Error Details"):
-                    st.code(traceback.format_exc())
+                st.error(f"❌ Failed: {e}")
     
     with col2:
         if st.button("🔄 Reload NFA", use_container_width=True):
-            if 'dfa_data' in st.session_state:
-                del st.session_state['dfa_data']
-            if 'conversion_logs' in st.session_state:
-                del st.session_state['conversion_logs']
-            if 'converted' in st.session_state:
-                del st.session_state['converted']
+            for key in ['dfa_data', 'conversion_logs', 'converted']:
+                st.session_state.pop(key, None)
             st.rerun()
     
     with col3:
         if st.button("🏠 Home", use_container_width=True):
             st.switch_page("main.py")
     
-    # Display results if conversion has been done
-    if 'converted' in st.session_state and st.session_state.get('converted', False):
-        
+    if st.session_state.get('converted', False):
         st.markdown("---")
-        
-        # Conversion Log
         st.header("📝 Conversion Log")
-        st.markdown("Step-by-step trace of the subset construction algorithm:")
-        
         with st.expander("🔍 View Algorithm Trace", expanded=False):
-            log_text = "\n".join(st.session_state['conversion_logs'])
-            st.text_area("Algorithm Trace", log_text, height=400, label_visibility="collapsed")
+            st.text_area("Algorithm Trace", "\n".join(st.session_state['conversion_logs']), 
+                        height=400, label_visibility="collapsed")
         
         st.markdown("---")
-        
-        # DFA Output
         st.header("🎯 DFA Output")
-        
         dfa_data = st.session_state['dfa_data']
         
-        # Create tabs for DFA views
-        if GRAPH_AVAILABLE:
-            dfa_tab1, dfa_tab2, dfa_tab3, dfa_tab4 = st.tabs(["📊 Graph", "🔄 Comparison", "📋 JSON", "📈 Summary"])
-            
-            with dfa_tab1:
-                try:
-                    dfa_svg_graph = get_graph_svg(dfa_data, "Output DFA")
-                    st.image(dfa_svg_graph, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Failed to generate graph: {e}")
-            
-            with dfa_tab2:
-                try:
-                    st.subheader("Side-by-Side Comparison")
-                    comparison_graph = compare_graphs(nfa_data, dfa_data)
-                    comparison_svg = comparison_graph.pipe(format='svg').decode('utf-8')
-                    st.image(comparison_svg, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Failed to generate comparison: {e}")
-        else:
-            dfa_tab3, dfa_tab4 = st.tabs(["📋 JSON", "📈 Summary"])
+        dfa_tabs = ["📊 Graph", "🔄 Comparison", "📋 JSON", "📈 Summary"] if GRAPH_AVAILABLE else ["📋 JSON", "📈 Summary"]
+        dfa_tab_objs = st.tabs(dfa_tabs)
         
-        with dfa_tab3:
+        if GRAPH_AVAILABLE:
+            with dfa_tab_objs[0]:
+                try:
+                    st.image(get_graph_svg(dfa_data, "Output DFA"), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+            
+            with dfa_tab_objs[1]:
+                try:
+                    comp = compare_graphs(nfa_data, dfa_data)
+                    st.image(comp.pipe(format='svg').decode('utf-8'), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed: {e}")
+            json_tab, summary_tab = dfa_tab_objs[2], dfa_tab_objs[3]
+        else:
+            json_tab, summary_tab = dfa_tab_objs[0], dfa_tab_objs[1]
+        
+        with json_tab:
             dfa_json = json.dumps(dfa_data, indent=2)
             st.code(dfa_json, language="json")
-            
-            # Download button
-            st.download_button(
-                label="💾 Download DFA JSON",
-                data=dfa_json,
-                file_name="dfa.json",
-                mime="application/json",
-                use_container_width=True
-            )
+            st.download_button("💾 Download DFA JSON", dfa_json, "dfa.json", 
+                             "application/json", use_container_width=True)
         
-        with dfa_tab4:
+        with summary_tab:
             col1, col2 = st.columns(2)
-            
             with col1:
-                st.metric("States", len(dfa_data["states"]))
-                st.metric("Alphabet Size", len(dfa_data["alphabet"]))
-                st.metric("Final States", len(dfa_data["final_states"]))
-            
+                for label, key in [("States", "states"), ("Alphabet", "alphabet"), ("Finals", "final_states")]:
+                    st.metric(label, len(dfa_data[key]))
             with col2:
                 st.markdown("**States:** " + ", ".join(f"`{s}`" for s in dfa_data["states"]))
-                st.markdown("**Start State:** " + f"`{dfa_data['start_state']}`")
-                st.markdown("**Final States:** " + ", ".join(f"`{s}`" for s in dfa_data["final_states"]))
+                st.markdown(f"**Start:** `{dfa_data['start_state']}`")
+                st.markdown("**Finals:** " + ", ".join(f"`{s}`" for s in dfa_data["final_states"]))
             
-            # State explosion analysis
             st.markdown("---")
-            st.subheader("📊 Comparison Metrics")
-            
-            nfa_state_count = len(nfa_data["states"])
-            dfa_state_count = len(dfa_data["states"])
-            
+            st.subheader("📊 Comparison")
+            nfa_cnt, dfa_cnt = len(nfa_data["states"]), len(dfa_data["states"])
             col1, col2, col3 = st.columns(3)
+            col1.metric("NFA States", nfa_cnt)
+            col2.metric("DFA States", dfa_cnt)
+            col3.metric("Ratio", f"{dfa_cnt/nfa_cnt:.2f}x" if nfa_cnt > 0 else "N/A")
             
-            with col1:
-                st.metric("NFA States", nfa_state_count)
-            
-            with col2:
-                st.metric("DFA States", dfa_state_count)
-            
-            with col3:
-                ratio = dfa_state_count / nfa_state_count if nfa_state_count > 0 else 0
-                st.metric("Ratio (DFA/NFA)", f"{ratio:.2f}x")
-            
-            # Analysis
-            if dfa_state_count > nfa_state_count * 2:
-                st.warning(f"⚠️ State explosion detected! DFA has {dfa_state_count} states vs {nfa_state_count} in NFA")
-            elif dfa_state_count < nfa_state_count:
-                st.success(f"✅ DFA is more compact! {dfa_state_count} states vs {nfa_state_count} in NFA")
+            if dfa_cnt > nfa_cnt * 2:
+                st.warning(f"⚠️ State explosion! {dfa_cnt} vs {nfa_cnt}")
+            elif dfa_cnt < nfa_cnt:
+                st.success(f"✅ DFA more compact! {dfa_cnt} vs {nfa_cnt}")
             else:
-                st.info(f"ℹ️ Similar complexity: {dfa_state_count} DFA states vs {nfa_state_count} NFA states")
+                st.info(f"ℹ️ Similar: {dfa_cnt} vs {nfa_cnt}")
     
-    # Sidebar
     with st.sidebar:
         st.header("🎯 Current NFA")
-        
         if 'nfa_data' in st.session_state:
             nfa = st.session_state['nfa_data']
             st.metric("States", len(nfa.get('states', [])))
-            st.metric("Alphabet Size", len(nfa.get('alphabet', [])))
-            st.metric("Final States", len(nfa.get('final_states', [])))
-            
+            st.metric("Alphabet", len(nfa.get('alphabet', [])))
             st.markdown("---")
-            
             if st.button("🗑️ Clear NFA", use_container_width=True):
-                del st.session_state['nfa_data']
-                if 'dfa_data' in st.session_state:
-                    del st.session_state['dfa_data']
-                if 'conversion_logs' in st.session_state:
-                    del st.session_state['conversion_logs']
-                if 'converted' in st.session_state:
-                    del st.session_state['converted']
+                for key in ['nfa_data', 'dfa_data', 'conversion_logs', 'converted']:
+                    st.session_state.pop(key, None)
                 st.rerun()
         
         st.markdown("---")
-        
-        st.header("ℹ️ About Conversion")
-        
-        st.markdown("""
-        ### Subset Construction
-        
-        The algorithm creates DFA states from sets of NFA states:
-        
-        1. Start with {initial state}
-        2. For each DFA state and symbol:
-           - Find all reachable NFA states
-           - Create new DFA state if needed
-        3. Mark DFA states containing NFA final states as final
-        
-        ### Complexity
-        - **Time**: O(2^n × |Σ|)
-        - **Space**: O(2^n)
-        
-        where n = NFA states, |Σ| = alphabet size
-        """)
+        st.header("ℹ️ About")
+        st.markdown("""### Subset Construction
+1. Start with {initial}
+2. For each state & symbol: find reachable NFA states
+3. Mark DFA states with NFA finals as final
 
+**Complexity:** O(2^n × |Σ|)""")
 
 if __name__ == "__main__":
     main()
