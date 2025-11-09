@@ -2,6 +2,9 @@
 
 This directory contains comprehensive documentation for the NFA to DFA Visualizer project.
 
+> 📋 **Quick Navigation:** See [index.md](index.md) for detailed file summaries and navigation guide  
+> 📝 **Change History:** See [changes.md](changes.md) for documentation update tracking
+
 ## Documentation Files
 
 ### User Documentation
@@ -23,6 +26,9 @@ This directory contains comprehensive documentation for the NFA to DFA Visualize
 
 ## Quick Navigation
 
+**New to the project?**
+- Start with [index.md](index.md) - Comprehensive documentation index with file summaries
+
 **For Users:**
 1. Start with [QUICKSTART.md](QUICKSTART.md)
 2. Learn JSON format in [JSON_FORMAT_SPECIFICATION.md](JSON_FORMAT_SPECIFICATION.md)
@@ -37,11 +43,21 @@ This directory contains comprehensive documentation for the NFA to DFA Visualize
 1. [OVERVIEW.md](OVERVIEW.md) - High-level project description
 2. [V3_IMPLEMENTATION_SUMMARY.md](V3_IMPLEMENTATION_SUMMARY.md) - Implementation details
 
+**Documentation Maintenance:**
+- [index.md](index.md) - File index and summaries
+- [changes.md](changes.md) - Documentation change history
+
 ## Contributing
 
 See [../README.md](../README.md) for contribution guidelines.
 
+For documentation updates, please:
+1. Make your changes to the relevant files
+2. Update [changes.md](changes.md) with a summary of changes
+3. Update [index.md](index.md) if you add/remove files or change file purposes
+
 ## Version
 
-Documentation for v3.0 (Optimized)
-Last updated: November 2025
+Documentation for v3.0 (Optimized)  
+Last updated: November 2025  
+See [changes.md](changes.md) for detailed change history
