@@ -1,4 +1,4 @@
-# NFA TO DFA CONVERSION STREAMLIT APPLICATION USING GRAPHVIZ
+# NFA to DFA Conversion Streamlit Application Using Graphviz
 
 **Project Report**
 
@@ -35,28 +35,25 @@ The primary objectives of this application are:
 1. **Educational Tool**: Provide a visual and interactive way to learn NFA to DFA conversion
 2. **Algorithm Demonstration**: Illustrate the step-by-step process of the Subset Construction Algorithm
 3. **Visual Representation**: Use Graphviz to create clear, professional automata diagrams
-4. **Accessibility**: Offer multiple input methods (manual builder, JSON import, pre-built examples)
+4. **Accessibility**: Offer input through a manual builder
 5. **Validation**: Ensure all NFA inputs are properly validated before conversion
 
 ### Key Features
 
 - **🏠 Landing Page**: Beautiful welcome interface with quick navigation
 - **📝 Manual Builder**: Form-based NFA builder with interactive inputs
-- **📤 Import JSON**: Upload, paste, or load example NFAs
 - **🔄 Convert & Visualize**: See NFA to DFA conversion with detailed graphs
 - **ℹ️ About & Help**: Comprehensive documentation and examples
 - **📊 Graph Visualization**: Visual automata diagrams using Graphviz
 - **📝 Detailed Logging**: Step-by-step algorithm trace
 - **✅ Validation**: Automatic NFA structure validation
 - **💾 Export**: Download results as JSON
-- **🧪 Testing**: Full test suite with 21+ test cases
 
 ### Technical Stack
 
 - **Framework**: Streamlit (Python web framework)
 - **Language**: Python 3.8+
 - **Visualization**: Graphviz (DOT language)
-- **Testing**: pytest + Streamlit app testing
 - **Algorithm**: Subset Construction (Powerset Construction)
 
 ### Subset Construction Algorithm
@@ -162,16 +159,11 @@ This example demonstrates an NFA that accepts binary strings ending with "01":
 TOC/
 ├── main.py                          # Landing page
 ├── pages/
-│   ├── 1_📝_Manual_Builder.py      # Form-based NFA builder
-│   ├── 2_📤_Import_JSON.py         # JSON import page
-│   ├── 3_🔄_Convert_NFA_DFA.py     # Conversion & visualization
-│   └── 4_ℹ️_About.py               # Documentation
+│   ├── Manual_NFA_Builder.py       # Form-based NFA builder
+│   ├── NFA_to_DFA_Converter.py     # Conversion & visualization
+│   └── About.py                     # Documentation
 ├── nfa_to_dfa.py                    # Core conversion algorithm
 ├── graph_visualizer.py              # Graphviz integration
-├── tests/
-│   ├── test_app.py                  # Streamlit tests
-│   ├── test_nfa_to_dfa.py          # Algorithm tests
-│   └── fixtures.py                  # Test fixtures
 ├── examples/
 │   ├── sample_nfa_1.json
 │   ├── sample_nfa_2.json
@@ -537,59 +529,6 @@ graphviz
 
 ---
 
-## SCREENSHOT OF OUTPUT
-
-### 1. Landing Page
-![Landing Page](screenshots/landing_page.png)
-- Beautiful hero section with gradient banner
-- Quick navigation to Manual Builder and Converter
-- Feature highlights and overview
-- Example NFA with explanation
-
-### 2. Manual Builder Interface
-![Manual Builder](screenshots/manual_builder.png)
-- Form-based input for states and alphabet
-- Interactive transition grid
-- Real-time JSON preview
-- Validation feedback
-
-### 3. NFA Graph Visualization
-![NFA Graph](screenshots/nfa_graph.png)
-- Clear visual representation using Graphviz
-- Start state indicated with arrow
-- Final states shown as double circles
-- Transition labels on edges
-
-### 4. Conversion Process
-![Conversion Log](screenshots/conversion_log.png)
-- Step-by-step algorithm trace
-- State creation logging
-- Transition computation details
-- Final state determination
-
-### 5. DFA Output
-![DFA Graph](screenshots/dfa_graph.png)
-- Resulting DFA visualization
-- Composite state names (e.g., {q0,q1})
-- Deterministic transitions
-
-### 6. Side-by-Side Comparison
-![Comparison View](screenshots/comparison.png)
-- NFA and DFA displayed together
-- Visual comparison of structure
-- State count metrics
-- Complexity analysis
-
-### 7. JSON Export
-![JSON Export](screenshots/json_export.png)
-- Downloadable DFA specification
-- Pretty-printed JSON format
-- Copy-paste ready
-
-**Note**: To capture screenshots, run the application using `streamlit run main.py` and use your screen capture tool to save images to the `screenshots/` folder.
-
----
-
 ## CONCLUSION
 
 ### Summary
@@ -599,8 +538,8 @@ The **NFA to DFA Visualizer v3.0** successfully demonstrates the Subset Construc
 ### Key Achievements
 
 1. **Educational Impact**: Provides clear visualization of the conversion process, helping users understand the algorithm intuitively
-2. **User Experience**: Multi-page architecture with form-based builder, JSON import, and pre-built examples
-3. **Technical Excellence**: Clean code architecture with 21+ passing tests, comprehensive validation, and error handling
+2. **User Experience**: Multi-page architecture with form-based builder and comprehensive documentation
+3. **Technical Excellence**: Clean code architecture with comprehensive validation and error handling
 4. **Visual Clarity**: Graphviz integration creates professional-quality automata diagrams
 5. **Extensibility**: Modular design allows easy addition of new features (epsilon transitions, minimization, etc.)
 
@@ -618,7 +557,6 @@ Users of this application can:
 1. **Algorithm Efficiency**: The implementation uses BFS with frozenset for efficient state tracking
 2. **State Management**: Streamlit's session state enables seamless navigation between pages
 3. **Visualization**: Graphviz DOT language provides clean, scalable automata diagrams
-4. **Testing**: Comprehensive test suite ensures reliability and correctness
 
 ### Limitations and Future Work
 
@@ -653,7 +591,6 @@ The NFA to DFA Visualizer demonstrates that complex algorithms can be made acces
 
 The application exemplifies modern software development practices:
 - Clean, documented code
-- Comprehensive testing
 - User-centered design
 - Modular architecture
 - Clear documentation
@@ -708,22 +645,18 @@ This project successfully transforms an abstract algorithm into an engaging, int
 9. **Python 3.8+ Documentation**
    - Official Documentation: https://docs.python.org/3/
 
-10. **pytest Documentation**
-    - Official Documentation: https://docs.pytest.org/
-    - Streamlit Testing: https://docs.streamlit.io/library/api-reference/app-testing
-
 ### Related Projects
 
-11. **JFLAP** (Java Formal Languages and Automata Package)
+10. **JFLAP** (Java Formal Languages and Automata Package)
     - http://www.jflap.org/
     - Desktop application for experimenting with formal languages
 
-12. **Automata Simulator**
+11. **Automata Simulator**
     - Various online automata simulators and visualizers
 
 ### Code Repository
 
-13. **Project Repository**
+12. **Project Repository**
     - GitHub: https://github.com/Vishnuj-n/TOC
     - Branch: fin_ver
     - Version: v3.0
