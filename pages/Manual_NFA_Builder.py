@@ -1,5 +1,6 @@
 """Manual NFA Builder Page"""
 import streamlit as st
+import json
 from nfa_to_dfa import validate_nfa
 
 st.set_page_config(page_title="Manual NFA Builder", page_icon="📝", layout="wide")
@@ -16,28 +17,42 @@ def init_state():
 
 def reset_all():
     """Reset all builder state."""
-    for key in ['builder_states', 'builder_alphabet', 'builder_start_state', 
-                'builder_final_states', 'builder_transitions', 'step1_completed', 'step2_completed']:
-        st.session_state[key] = [] if 'states' in key or 'alphabet' in key else ({} if 'transitions' in key else (False if 'completed' in key else None))
+    keys_to_reset = ['builder_states', 'builder_alphabet', 'builder_start_state', 
+                     'builder_final_states', 'builder_transitions', 'step1_completed', 'step2_completed']
+    for key in keys_to_reset:
+        if 'states' in key or 'alphabet' in key or 'final' in key:
+            st.session_state[key] = []
+        elif 'transitions' in key:
+            st.session_state[key] = {}
+        elif 'completed' in key:
+            st.session_state[key] = False
+        else:
+            st.session_state[key] = None
 
 def show_progress():
     """Display progress indicator."""
-    progress = [
-        ("✅ Step 1: States & Alphabet" if st.session_state.step1_completed else "⏳ Step 1: States & Alphabet", 
-         st.session_state.step1_completed),
-        ("✅ Step 2: Start & Final" if st.session_state.step2_completed else 
-         ("⏳ Step 2: Start & Final" if st.session_state.step1_completed else "🔒 Step 2: Locked"),
-         st.session_state.step2_completed or st.session_state.step1_completed),
-        ("⏳ Step 3: Transitions" if st.session_state.step2_completed else "🔒 Step 3: Locked",
-         st.session_state.step2_completed)
+    step1_done = st.session_state.step1_completed
+    step2_done = st.session_state.step2_completed
+    
+    steps = [
+        ("✅ Step 1: States & Alphabet" if step1_done else "⏳ Step 1: States & Alphabet"),
+        ("✅ Step 2: Start & Final" if step2_done else 
+         ("⏳ Step 2: Start & Final" if step1_done else "🔒 Step 2: Locked")),
+        ("⏳ Step 3: Transitions" if step2_done else "🔒 Step 3: Locked")
     ]
+    
     cols = st.columns(3)
-    for col, (text, is_active) in zip(cols, progress):
+    for col, text in zip(cols, steps):
         with col:
-            (st.success if "✅" in text else (st.info if "⏳" in text else st.warning))(text)
+            if "✅" in text:
+                st.success(text)
+            elif "⏳" in text:
+                st.info(text)
+            else:
+                st.warning(text)
 
 def main():
-    st.title("� Manual NFA Builder")
+    st.title("Manual NFA Builder")
     st.markdown("Build your NFA step-by-step. Each step depends on the previous one.")
     init_state()
     st.markdown("---")
@@ -180,19 +195,37 @@ def main():
         
         if build_nfa or preview_json:
             st.session_state.builder_transitions = transitions
-            nfa_data = {"states": st.session_state.builder_states, "alphabet": st.session_state.builder_alphabet,
-                       "start_state": st.session_state.builder_start_state, "final_states": st.session_state.builder_final_states,
-                       "transitions": transitions}
+            nfa_data = {
+                "states": st.session_state.builder_states,
+                "alphabet": st.session_state.builder_alphabet,
+                "start_state": st.session_state.builder_start_state,
+                "final_states": st.session_state.builder_final_states,
+                "transitions": transitions
+            }
             
             is_valid, msg = validate_nfa(nfa_data)
             if is_valid:
                 st.success(f"✅ {msg}")
+                
+                # Download button for NFA JSON
+                if preview_json:
+                    st.markdown("---")
+                    st.subheader("� NFA JSON Preview")
+                    nfa_json = json.dumps(nfa_data, indent=2)
+                    st.code(nfa_json, language="json")
+                    st.download_button(
+                        label="� Download NFA JSON",
+                        data=nfa_json,
+                        file_name="nfa_definition.json",
+                        mime="application/json",
+                        use_container_width=True,
+                        type="secondary"
+                    )
+                
                 if build_nfa:
                     st.session_state['nfa_data'] = nfa_data
                     st.balloons()
                     st.switch_page("pages/NFA_to_DFA_Converter.py")
-                else:
-                    st.json(nfa_data)
             else:
                 st.error(f"❌ {msg}")
     

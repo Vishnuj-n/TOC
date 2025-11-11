@@ -42,7 +42,10 @@ def main():
         json_tab, summary_tab = tab_objs[0], tab_objs[1]
     
     with json_tab:
-        st.json(nfa_data)
+        nfa_json = json.dumps(nfa_data, indent=2)
+        st.code(nfa_json, language="json")
+        st.download_button("💾 Download NFA JSON", nfa_json, "nfa.json", 
+                         "application/json", use_container_width=True)
     
     with summary_tab:
         col1, col2 = st.columns(2)
@@ -83,12 +86,12 @@ def main():
         st.markdown("---")
         st.header("📝 Conversion Log")
         with st.expander("🔍 View Algorithm Trace", expanded=False):
-            st.text_area("Algorithm Trace", "\n".join(st.session_state['conversion_logs']), 
+            st.text_area("Algorithm Trace", "\n".join(st.session_state.get('conversion_logs', [])), 
                         height=400, label_visibility="collapsed")
         
         st.markdown("---")
         st.header("🎯 DFA Output")
-        dfa_data = st.session_state['dfa_data']
+        dfa_data = st.session_state.get('dfa_data', {})
         
         dfa_tabs = ["📊 Graph", "🔄 Comparison", "📋 JSON", "📈 Summary"] if GRAPH_AVAILABLE else ["📋 JSON", "📈 Summary"]
         dfa_tab_objs = st.tabs(dfa_tabs)
@@ -120,15 +123,15 @@ def main():
             col1, col2 = st.columns(2)
             with col1:
                 for label, key in [("States", "states"), ("Alphabet", "alphabet"), ("Finals", "final_states")]:
-                    st.metric(label, len(dfa_data[key]))
+                    st.metric(label, len(dfa_data.get(key, [])))
             with col2:
-                st.markdown("**States:** " + ", ".join(f"`{s}`" for s in dfa_data["states"]))
-                st.markdown(f"**Start:** `{dfa_data['start_state']}`")
-                st.markdown("**Finals:** " + ", ".join(f"`{s}`" for s in dfa_data["final_states"]))
+                st.markdown("**States:** " + ", ".join(f"`{s}`" for s in dfa_data.get("states", [])))
+                st.markdown(f"**Start:** `{dfa_data.get('start_state', 'N/A')}`")
+                st.markdown("**Finals:** " + ", ".join(f"`{s}`" for s in dfa_data.get("final_states", [])))
             
             st.markdown("---")
             st.subheader("📊 Comparison")
-            nfa_cnt, dfa_cnt = len(nfa_data["states"]), len(dfa_data["states"])
+            nfa_cnt, dfa_cnt = len(nfa_data.get("states", [])), len(dfa_data.get("states", []))
             col1, col2, col3 = st.columns(3)
             col1.metric("NFA States", nfa_cnt)
             col2.metric("DFA States", dfa_cnt)
